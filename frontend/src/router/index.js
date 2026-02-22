@@ -5,8 +5,8 @@ const router = createRouter({
     routes: [
         {
             path: '/video-player',
-            name: 'VideoPlayer',
-            // component: () => import('@/components/VideoPlayer.vue'),
+            name: 'PlayerView',
+            component: () => import('@/views/UploadPlayerView.vue'),
             meta: { requiresAuth: true, requiresVerification: true }
         },
     ],
