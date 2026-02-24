@@ -15,12 +15,6 @@ async def handle_upload_files(webcam: UploadFile = None, screencast: UploadFile 
     print("webcam type:", webcam.content_type)
     print("screencast type:", screencast.content_type)
 
-    # upload videos to local storage...
-    # if bad (wrong format, too big,  etc...), return error
-    
-    # start job...
-    # if bad, remove files and return error
-
     return JSONResponse(
         content={'id': 12345},
         status_code=status.HTTP_200_OK
