@@ -1,4 +1,5 @@
 .vscode
+.idea
 intel
 images
 
@@ -218,3 +219,5 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+package-lock.json
