@@ -7,6 +7,13 @@ services:
       POSTGRES_PASSWORD: tracking
     volumes:
       - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tracking -d tracking"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
 
   rabbitmq:
     image: rabbitmq:3.13-management
@@ -26,6 +33,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    image: tracking-backend:latest
     environment:
       DATA_DIR: /data
       DATABASE_URL: postgresql://tracking:tracking@db:5432/tracking
@@ -36,7 +44,7 @@ services:
       - shared_data:/data
     depends_on:
       db:
-        condition: service_started
+        condition: service_healthy
       rabbitmq:
         condition: service_healthy
     ports:
@@ -46,6 +54,7 @@ services:
     build:
       context: ./tracking
       dockerfile: Dockerfile
+    image: tracking-tracker:latest
     environment:
       DATA_DIR: /data
       DATABASE_URL: postgresql://tracking:tracking@db:5432/tracking
@@ -56,9 +65,19 @@ services:
       - shared_data:/data
     depends_on:
       db:
-        condition: service_started
+        condition: service_healthy
       rabbitmq:
         condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: tracking-frontend:latest
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
 
 volumes:
   shared_data:
