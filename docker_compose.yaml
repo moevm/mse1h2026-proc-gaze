@@ -1,0 +1,65 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: tracking
+      POSTGRES_USER: tracking
+      POSTGRES_PASSWORD: tracking
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      DATA_DIR: /data
+      DATABASE_URL: postgresql://tracking:tracking@db:5432/tracking
+      AMQP_URL: amqp://guest:guest@rabbitmq:5672/
+      AMQP_QUEUE: tracking.jobs
+      AMQP_RESULT_QUEUE: tracking.results
+    volumes:
+      - shared_data:/data
+    depends_on:
+      db:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+
+  tracker:
+    build:
+      context: ./tracking
+      dockerfile: Dockerfile
+    environment:
+      DATA_DIR: /data
+      DATABASE_URL: postgresql://tracking:tracking@db:5432/tracking
+      AMQP_URL: amqp://guest:guest@rabbitmq:5672/
+      AMQP_QUEUE: tracking.jobs
+      AMQP_RESULT_QUEUE: tracking.results
+    volumes:
+      - shared_data:/data
+    depends_on:
+      db:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
+
+volumes:
+  shared_data:
+  pgdata:
