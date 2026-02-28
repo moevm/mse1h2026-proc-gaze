@@ -4,8 +4,8 @@ const router = createRouter({
     history: createWebHistory('/'),
     routes: [
         {
-            path: '/video-player',
-            name: 'PlayerView',
+            path: '/upload-video',
+            name: 'UploadPlayerView',
             component: () => import('@/views/UploadPlayerView.vue'),
             meta: { requiresAuth: true, requiresVerification: true }
         },

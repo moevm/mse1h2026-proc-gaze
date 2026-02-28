@@ -8,6 +8,8 @@
           @play="onPlay"
           @pause="onPause"
           @loadedmetadata="onLoadedMetadata"
+          @seeked="onSeeked"
+          @timeupdate="onTimeUpdate"
       ></video>
       <div v-if="duration" class="video-info">
         Длительность: {{ formatDuration(duration) }}
@@ -23,34 +25,25 @@
 import { ref, watch } from 'vue'
 
 const props = defineProps({
-  src: {
-    type: String,
-    default: null
-  }
+  src: { type: String, default: null }
 })
-
-const emit = defineEmits(['play', 'pause'])
+const emit = defineEmits(['play', 'pause', 'seek', 'duration', 'timeupdate'])
 
 const videoElement = ref(null)
 const duration = ref(null)
 
 watch(() => props.src, (newSrc) => {
-  if (!newSrc) {
-    duration.value = null
-  }
+  if (!newSrc) duration.value = null
 })
 
-const onPlay = () => {
-  emit('play')
-}
-
-const onPause = () => {
-  emit('pause')
-}
-
+const onPlay = () => emit('play')
+const onPause = () => emit('pause')
 const onLoadedMetadata = (e) => {
   duration.value = e.target.duration
+  emit('duration', e.target.duration)
 }
+const onSeeked = () => emit('seek', videoElement.value.currentTime)
+const onTimeUpdate = () => emit('timeupdate', videoElement.value.currentTime)
 
 const formatDuration = (seconds) => {
   const h = Math.floor(seconds / 3600)
@@ -64,7 +57,8 @@ const formatDuration = (seconds) => {
 
 defineExpose({
   play: () => videoElement.value?.play(),
-  pause: () => videoElement.value?.pause()
+  pause: () => videoElement.value?.pause(),
+  setCurrentTime: (time) => { if (videoElement.value) videoElement.value.currentTime = time; }
 })
 </script>
 

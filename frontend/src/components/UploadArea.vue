@@ -91,6 +91,7 @@ const clearFile = () => {
   border-color: #007bff;
   background-color: #e6f2ff;
   color: black;
+  min-height: 15px;
 }
 .placeholder {
   color: #666;
