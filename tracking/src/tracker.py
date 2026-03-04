@@ -143,13 +143,15 @@ class Tracker:
         left_pupil, right_pupil     = self.__detect_pupils(face_image, shape)
         left_contour, right_contour = self.__detect_eyes_contours(face_image, shape)
         
-        x1, y1, x2, y2 = self.__get_eye_bbox(left_contour, left_pupil, shape)
+        x1, y1, x2, y2 = self.__get_eye_bbox(left_contour, left_pupil, shape, 1.5)
+        left_bbox = (x1, y1, x2, y2)
         left_eye = face_image[y1:y2, x1:x2]
                 
-        x1, y1, x2, y2 = self.__get_eye_bbox(right_contour, right_pupil, shape)
+        x1, y1, x2, y2 = self.__get_eye_bbox(right_contour, right_pupil, shape, 1.5)
+        right_bbox = (x1, y1, x2, y2)
         right_eye = face_image[y1:y2, x1:x2]
         
-        return left_eye, right_eye, left_pupil, right_pupil
+        return left_eye, right_eye, left_pupil, right_pupil, (left_bbox, right_bbox)
         
     def __estimate_head_pose(self, face_image: np.ndarray) -> np.ndarray:
         model_hw = self._head_pose_estimation_model.input(0).shape[2:4]
@@ -162,6 +164,9 @@ class Tracker:
     def __estimate_gaze_vec(self, eyes: Tuple, angles: np.ndarray) -> np.ndarray:
         left_eye, right_eye = eyes
         
+        if any([s == 0 for s in left_eye.shape]) or any([s == 0 for s in right_eye.shape]) :
+            return [0, 0, 0] 
+        
         model_hw = self._gaze_vector_estimation_model.input(0).shape[2:4]
         
         preprocessed_left  = self.__preprocess_image(left_eye, model_hw)
@@ -170,9 +175,9 @@ class Tracker:
         output = self._gaze_vector_estimation_model((preprocessed_left, preprocessed_right, angles))
         output = output[self._gaze_vector_estimation_model.output(0)].squeeze()
         
-        l = np.linalg.norm(output)
-        if l != 0:
-            output = output / l
+        # l = np.linalg.norm(output)
+        # if l != 0:
+        #     output = output / l
         
         return output
     
@@ -191,13 +196,21 @@ class Tracker:
                 return frame
             
             h, w = face.shape[:2]
-            left_eye, right_eye, left_pupil, right_pupil = self.__detect_eyes(face, (h, w))
+            left_eye, right_eye, left_pupil, right_pupil, bbox = self.__detect_eyes(face, (h, w))
             
             angles = self.__estimate_head_pose(face)
             
             gaze_vec = self.__estimate_gaze_vec((left_eye, right_eye), angles)
             
             l = 25 # temporal for test only
+
+            # left_bbox, right_bbox = bbox
+            # x1, y1, x2, y2 = left_bbox
+            # cv2.rectangle(res, (x1 + x_offset, y1 + y_offset), (x2 + x_offset, y2 + y_offset), (255, 0, 0), 2)
+            # x1, y1, x2, y2 = right_bbox
+            # cv2.rectangle(res, (x1 + x_offset, y1 + y_offset), (x2 + x_offset, y2 + y_offset), (255, 0, 0), 2)
+            # self.__draw_landmarks(res, [(left_pupil[0] + x_offset, left_pupil[1] + y_offset),
+            #                             (right_pupil[0] + x_offset, right_pupil[1] + y_offset)])
 
             rx, ry = right_pupil
             lx, ly = left_pupil
