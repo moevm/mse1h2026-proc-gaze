@@ -185,8 +185,11 @@ class Tracker:
         vid_h, vid_w = frame.shape[:2] # opencv image shape h w c
         faces = self.__detect_faces(frame, (vid_h, vid_w))
         
-        res = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        res = frame
         for face, x_offset, y_offset in faces:
+            if any([s == 0 for s in face.shape]):
+                return frame
+            
             h, w = face.shape[:2]
             left_eye, right_eye, left_pupil, right_pupil = self.__detect_eyes(face, (h, w))
             
@@ -194,7 +197,7 @@ class Tracker:
             
             gaze_vec = self.__estimate_gaze_vec((left_eye, right_eye), angles)
             
-            l = 25
+            l = 25 # temporal for test only
 
             rx, ry = right_pupil
             lx, ly = left_pupil
@@ -211,6 +214,29 @@ class Tracker:
             cv2.arrowedLine(res, global_start, global_end, (255, 0, 0), 2)
             
         return res
+    
+    def process_webcam(self) -> None:
+        cam = cv2.VideoCapture(0)
+        frame_width = int(cam.get(cv2.CAP_PROP_FRAME_WIDTH))
+        frame_height = int(cam.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        out = cv2.VideoWriter('output.mp4', fourcc, 20.0, (frame_width, frame_height))
+        while True:
+            ret, frame = cam.read()
+            
+            new_frame = self.process_frame(frame)
+
+            out.write(new_frame)
+
+            cv2.imshow('Camera', new_frame)
+
+            if cv2.waitKey(1) == ord('q'):
+                break
+
+        cam.release()
+        out.release()
+        cv2.destroyAllWindows()
     
     def process_video(self, video) -> None:
         pass
