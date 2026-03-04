@@ -29,8 +29,8 @@ class Tracker:
         
         return model
     
-    def __preprocess_image(self, image: np.ndarray, model_input_shape: np.ndarray) -> np.ndarray:
-        h, w = model_input_shape
+    def __preprocess_image(self, image: np.ndarray, shape: Tuple[int, int]) -> np.ndarray:
+        h, w = shape
         
         resized_image = cv2.resize(image, (w, h))
         rgb_image = cv2.cvtColor(resized_image, cv2.COLOR_BGR2RGB)
@@ -39,8 +39,8 @@ class Tracker:
 
         return preprocessed
         
-    def __detect_faces(self, image: np.ndarray) -> List[np.ndarray]:
-        w, h = image.shape[:2]
+    def __detect_faces(self, image: np.ndarray, shape: Tuple[int, int]) -> List:
+        h, w = shape
         model_hw = self._face_detection_model.input(0).shape[2:4]
         
         preprocessed_image = self.__preprocess_image(image, model_hw)
@@ -48,7 +48,7 @@ class Tracker:
         output = self._face_detection_model(preprocessed_image)
         output = output[self._face_detection_model.output(0)].squeeze()
         
-        cropped_faces = []
+        faces_data = []
         for _, _, confidence, x_min, y_min, x_max, y_max in output:
             
             if confidence < self._face_detection_threshold:
@@ -58,12 +58,12 @@ class Tracker:
             x_max, y_max = int(x_max * w), int(y_max * h)
             
             cropped = np.copy(image[y_min:y_max, x_min:x_max])
-            cropped_faces.append(cropped)
+            faces_data.append((cropped, x_min, y_min))
         
-        return cropped_faces
+        return faces_data
 
-    def __detect_eyes_contours(self, face_image: np.ndarray) -> Tuple:
-        w, h = face_image.shape[:2]
+    def __detect_eyes_contours(self, face_image: np.ndarray, shape: Tuple[int, int]) -> Tuple:
+        h, w = shape
         
         model_hw = self._eyes_countours_detection_model.input(0).shape[2:4]
         preprocessed_image = self.__preprocess_image(face_image, model_hw)
@@ -101,8 +101,8 @@ class Tracker:
                 
         return np.array(landmarks)
     
-    def __detect_pupils(self, face_image: np.ndarray) -> np.ndarray:
-        h, w = face_image.shape[:2]
+    def __detect_pupils(self, face_image: np.ndarray, shape: Tuple[int, int]) -> Tuple:
+        h, w = shape
         
         model_hw = self._pupils_detection_model.input(0).shape[2:4]
         preprocessed_image = self.__preprocess_image(face_image, model_hw)
@@ -110,10 +110,13 @@ class Tracker:
         output = self._pupils_detection_model(preprocessed_image)
         output = output[self._pupils_detection_model.output(0)].squeeze()
         
-        left_pupil  = (int(output[0] * w), int(output[1] * h))
-        right_pupil = (int(output[2] * w), int(output[3] * h))
+        left_pupil  = (int(output[0] * w), 
+                       int(output[1] * h))
         
-        return np.array([left_pupil, right_pupil])
+        right_pupil = (int(output[2] * w), 
+                       int(output[3] * h))
+        
+        return left_pupil, right_pupil
 
     def __get_eye_bbox(self, contour: np.ndarray, pupil: np.ndarray, image_shape: np.ndarray|Tuple, padding: float=1.0) -> np.ndarray:
         min_x, max_x = np.min(contour[:, 0]), np.max(contour[:, 0])
@@ -136,23 +139,19 @@ class Tracker:
         
         return np.array([x1, y1, x2, y2])
     
-    def __detect_eyes(self, face_image: np.ndarray) -> Tuple:
-        h, w = face_image.shape[:2]
-                
-        left_pupil, right_pupil     = self.__detect_pupils(face_image)
-        left_contour, right_contour = self.__detect_eyes_contours(face_image)
+    def __detect_eyes(self, face_image: np.ndarray, shape: Tuple[int, int]) -> Tuple:
+        left_pupil, right_pupil     = self.__detect_pupils(face_image, shape)
+        left_contour, right_contour = self.__detect_eyes_contours(face_image, shape)
         
-        x1, y1, x2, y2 = self.__get_eye_bbox(left_contour, left_pupil, (w, h))
+        x1, y1, x2, y2 = self.__get_eye_bbox(left_contour, left_pupil, shape)
         left_eye = face_image[y1:y2, x1:x2]
                 
-        x1, y1, x2, y2 = self.__get_eye_bbox(right_contour, right_pupil, (w, h))
+        x1, y1, x2, y2 = self.__get_eye_bbox(right_contour, right_pupil, shape)
         right_eye = face_image[y1:y2, x1:x2]
         
         return left_eye, right_eye, left_pupil, right_pupil
         
     def __estimate_head_pose(self, face_image: np.ndarray) -> np.ndarray:
-        h, w = face_image.shape[:2]
-        
         model_hw = self._head_pose_estimation_model.input(0).shape[2:4]
         preprocessed_image = self.__preprocess_image(face_image, model_hw)
         
@@ -162,8 +161,6 @@ class Tracker:
     
     def __estimate_gaze_vec(self, eyes: Tuple, angles: np.ndarray) -> np.ndarray:
         left_eye, right_eye = eyes
-        left_hw  = left_eye.shape[:2]
-        right_hw = right_eye.shape[:2] 
         
         model_hw = self._gaze_vector_estimation_model.input(0).shape[2:4]
         
@@ -178,28 +175,42 @@ class Tracker:
             output = output / l
         
         return output
+    
+    def __draw_landmarks(self, face_image: np.ndarray, points: List) -> np.ndarray:
+        for p in points:
+            cv2.circle(face_image, p, 2, (255, 0, 0), 2)
+        return face_image
+    
+    def process_frame(self, frame: np.ndarray) -> np.ndarray:
+        vid_h, vid_w = frame.shape[:2] # opencv image shape h w c
+        faces = self.__detect_faces(frame, (vid_h, vid_w))
         
-    def process_video(self, video) -> None:
-        faces = self.__detect_faces(video)
-        
-        left_eye, right_eye, left_pupil, right_pupil = self.__detect_eyes(faces[0])
-        
-        angles = self.__estimate_head_pose(faces[0])
-        
-        start_point = (left_pupil - right_pupil) / 2
-        
-        gaze_vec = self.__estimate_gaze_vec((left_eye, right_eye), angles)
-        
-        
-        scale = 10
-        end_point = (
-                    int(start_point[0] + gaze_vec[0] * scale),
-                    int(start_point[1] + gaze_vec[1] * scale)
-                    )
-        
-        f = cv2.cvtColor(faces[0], cv2.COLOR_BGR2RGB)        
-        cv2.line(f, (int(start_point[0]), int(start_point[1])), end_point, (0, 0, 255), 2) 
+        res = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        for face, x_offset, y_offset in faces:
+            h, w = face.shape[:2]
+            left_eye, right_eye, left_pupil, right_pupil = self.__detect_eyes(face, (h, w))
+            
+            angles = self.__estimate_head_pose(face)
+            
+            gaze_vec = self.__estimate_gaze_vec((left_eye, right_eye), angles)
+            
+            l = 25
 
-        plt.imshow(f)
-        plt.axis("off")
-        plt.show()
+            rx, ry = right_pupil
+            lx, ly = left_pupil
+            
+            sx, sy = int((rx+lx)/2), int((ry+ly)/2)
+            
+            vx, vy = gaze_vec[:2]
+            
+            ex, ey = sx + vx * l, sy + vy * l
+            
+            global_start = (int(sx + x_offset), int(sy + y_offset))
+            global_end = (int(ex + x_offset), int(ey + y_offset))
+            
+            cv2.arrowedLine(res, global_start, global_end, (255, 0, 0), 2)
+            
+        return res
+    
+    def process_video(self, video) -> None:
+        pass
