@@ -1,18 +1,35 @@
 <template>
-  <div class="record-item" :class="{ expanded: record.expanded }">
+  <div class="record-item" :class="{ expanded: props.record.expanded }">
     <div class="record-row main-row">
       <div class="info-group">
-        <!-- up info-->
+        <span class="info-item"><strong>UUID студента:</strong> {{ props.record.student_id }}</span>
+        <span class="info-item"><strong>UUID записи:</strong> {{ props.record.recording_id }}</span>
+        <span class="info-item">
+          <strong>Статус:</strong>
+          <span class="status-badge">
+            {{ props.record.status }}
+          </span>
+        </span>
+        <span v-if="showSuspicions" class="info-item">
+          <strong>Подозрений:</strong> {{ props.record.count_suspicions }}
+        </span>
       </div>
 
       <div class="actions-group">
-        <!--buttons-->
+        <button class="results-link" @click="goToResult">Просмотр результатов</button>
+        <button class="expand-btn" @click="toggle">
+          <span v-if="!props.record.expanded">▼</span>
+          <span v-else>▲</span>
+        </button>
       </div>
     </div>
 
     <div v-if="props.record.expanded" class="record-row expanded-row">
       <div class="info-group expanded-info">
-        <!--down info-->
+        <span class="info-item"><strong>Видео с камеры:</strong> {{ props.record.camera_video_name }}</span>
+        <span class="info-item"><strong>Видео с экрана:</strong> {{ props.record.screen_video_name }}</span>
+        <span class="info-item"><strong>Дата создания:</strong> {{ props.record.created_date }}</span>
+        <span class="info-item"><strong>Дата проверки:</strong> {{ props.record.processed_date || '—' }}</span>
       </div>
       <div class="actions-group"></div>
     </div>
@@ -20,6 +37,8 @@
 </template>
 
 <script setup>
+import { computed } from 'vue';
+import router from "@/router/index.js";
 
 const props = defineProps({
   record: {
@@ -27,6 +46,24 @@ const props = defineProps({
     required: true,
   },
 });
+
+
+const emit = defineEmits(['toggleExpand']);
+
+const showSuspicions = computed(() => {
+  return props.record.status === 'DONE' && props.record.count_suspicions !== null;
+});
+
+const toggle = () => {
+  emit('toggleExpand');
+};
+
+const goToResult = () => {
+  router.push({
+    name: 'ResultView',
+    params: { id: props.record.recording_id }
+  });
+};
 
 </script>
 
@@ -122,7 +159,6 @@ const props = defineProps({
   color: #1a202c;
 }
 
-/* Адаптивность для узких экранов */
 @media (max-width: 768px) {
   .record-row {
     flex-direction: column;
