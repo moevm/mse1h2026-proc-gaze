@@ -9,6 +9,12 @@ const router = createRouter({
             component: () => import('@/views/UploadPlayerView.vue'),
             meta: { requiresAuth: true, requiresVerification: true }
         },
+        {
+            path: '/main',
+            name: 'MainView',
+            component: () => import('@/views/MainView.vue'),
+            meta: { requiresAuth: true, requiresVerification: true }
+        }
     ],
 })
 
