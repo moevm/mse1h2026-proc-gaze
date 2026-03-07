@@ -1,7 +1,5 @@
 export const STATUS_COLORS = {
-    SENT: '#f39c12',
     PENDING: '#3498db',
-    PROCESSING: '#9b59b6',
-    READY: '#2ecc71',
+    IN_PROGRESS: '#9b59b6',
     DONE: '#27ae60',
 };

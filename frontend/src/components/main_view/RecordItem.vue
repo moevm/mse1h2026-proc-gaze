@@ -6,7 +6,7 @@
         <span class="info-item"><strong>UUID записи:</strong> {{ props.record.recording_id }}</span>
         <span class="info-item">
           <strong>Статус:</strong>
-          <span class="status-badge" :style="{ backgroundColor: STATUS_COLORS[record.status]}">
+          <span class="status-badge" :style="{ backgroundColor: STATUS_COLORS[props.record.status] }">
             {{ props.record.status }}
           </span>
         </span>
@@ -18,20 +18,22 @@
       <div class="actions-group">
         <button class="results-link" @click="goToResult">Просмотр результатов</button>
         <button class="expand-btn" @click="toggle">
-          <span v-if="!props.record.expanded">▼</span>
-          <span v-else>▲</span>
+          <font-awesome-icon :icon="props.record.expanded ? 'chevron-up' : 'chevron-down'" />
         </button>
       </div>
     </div>
 
     <div v-if="props.record.expanded" class="record-row expanded-row">
-      <div class="info-group expanded-info">
-        <span class="info-item"><strong>Видео с камеры:</strong> {{ props.record.camera_video_name }}</span>
-        <span class="info-item"><strong>Видео с экрана:</strong> {{ props.record.screen_video_name }}</span>
-        <span class="info-item"><strong>Дата создания:</strong> {{ props.record.created_date }}</span>
-        <span class="info-item"><strong>Дата проверки:</strong> {{ props.record.processed_date || '—' }}</span>
+      <div class="expanded-info">
+        <div class="expanded-left">
+          <div class="info-item"><strong>Видео с камеры:</strong> {{ props.record.camera_video_name }}</div>
+          <div class="info-item"><strong>Видео с экрана:</strong> {{ props.record.screen_video_name }}</div>
+        </div>
+        <div class="expanded-right">
+          <div class="info-item"><strong>Дата создания:</strong> {{ props.record.created_date }}</div>
+          <div class="info-item"><strong>Дата проверки:</strong> {{ props.record.processed_date || '—' }}</div>
+        </div>
       </div>
-      <div class="actions-group"></div>
     </div>
   </div>
 </template>
@@ -48,24 +50,22 @@ const props = defineProps({
   },
 });
 
-
-const emit = defineEmits(['toggleExpand']);
+const emit = defineEmits(['toggle-expand']);
 
 const showSuspicions = computed(() => {
   return props.record.status === 'DONE' && props.record.count_suspicions !== null;
 });
 
 const toggle = () => {
-  emit('toggleExpand');
+  emit('toggle-expand');
 };
 
 const goToResult = () => {
   router.push({
     name: 'ResultView',
-    params: { id: props.record.recording_id }
+    params: { recording_id: props.record.recording_id }
   });
 };
-
 </script>
 
 <style scoped>
@@ -114,6 +114,11 @@ const goToResult = () => {
   white-space: nowrap;
 }
 
+.expanded-row .info-item {
+  white-space: normal;
+  word-break: break-word;
+}
+
 .status-badge {
   display: inline-block;
   padding: 0.25rem 0.75rem;
@@ -138,6 +143,10 @@ const goToResult = () => {
   font-weight: 500;
   transition: color 0.2s;
   white-space: nowrap;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
 }
 
 .results-link:hover {
@@ -160,6 +169,28 @@ const goToResult = () => {
   color: #1a202c;
 }
 
+.expanded-info {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  width: 100%;
+}
+
+.expanded-left,
+.expanded-right {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.expanded-left .info-item {
+  text-align: left;
+}
+
+.expanded-right .info-item {
+  text-align: left;
+}
+
 @media (max-width: 768px) {
   .record-row {
     flex-direction: column;
@@ -175,9 +206,8 @@ const goToResult = () => {
   }
 
   .expanded-info {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.5rem;
+    grid-template-columns: 1fr;
+    gap: 1rem;
   }
 }
 </style>
