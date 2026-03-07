@@ -10,7 +10,12 @@
       <h2 class="list-title">Загруженные видео</h2>
 
       <div class="records-container" v-if="records.length > 0">
-        <!--RecordItem-->
+        <RecordItem
+            v-for="record in records"
+            :key="record.recording_id"
+            :record="record"
+            @toggle-expand="toggleExpand(record.recording_id)"
+        />
       </div>
 
       <div v-else class="empty-placeholder">
@@ -21,14 +26,34 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import {onMounted, ref} from 'vue';
 import router from "@/router/index.js";
+import RecordItem from "@/components/main_view/RecordItem.vue";
+import { createRecording } from "@/types/recordings"
 
 const records = ref([]);
+
 
 const goToUpload = () => {
   router.push({ name: 'UploadPlayerView' });
 };
+
+const toggleExpand = (recording_id) => {
+  const record = records.value.find(rec => rec.recording_id === recording_id);
+  if (record) {
+    record.expanded = !record.expanded;
+  }
+};
+
+onMounted(async () => {
+  try {
+    //API запрос
+    const data = [];
+    records.value = data.map(item => createRecording(item));
+  } catch (error) {
+    console.error('Error with uploading records:', error);
+  }
+});
 
 </script>
 
@@ -43,7 +68,7 @@ const goToUpload = () => {
 }
 
 .content-card {
-  max-width: 1200px;
+  max-width: 1600px;
   width: 100%;
   background-color: #ffffff;
   border-radius: 24px;
