@@ -6,7 +6,7 @@
         <span class="info-item"><strong>UUID записи:</strong> {{ props.record.recording_id }}</span>
         <span class="info-item">
           <strong>Статус:</strong>
-          <span class="status-badge">
+          <span class="status-badge" :style="{ backgroundColor: STATUS_COLORS[record.status]}">
             {{ props.record.status }}
           </span>
         </span>
@@ -39,6 +39,7 @@
 <script setup>
 import { computed } from 'vue';
 import router from "@/router/index.js";
+import { STATUS_COLORS } from "@/constants/statusColor.js";
 
 const props = defineProps({
   record: {
