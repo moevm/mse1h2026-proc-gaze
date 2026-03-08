@@ -6,13 +6,16 @@
         <span class="info-item"><strong>UUID записи:</strong> {{ props.record.recording_id }}</span>
         <span class="info-item">
           <strong>Статус:</strong>
-          <span class="status-badge" :style="{ backgroundColor: STATUS_COLORS[props.record.status] }">
-            {{ props.record.status }}
+          <span class="info-value">
+            <span class="status-badge" :style="{ backgroundColor: STATUS_COLORS[props.record.status] }">
+              {{ props.record.status }}
+            </span>
           </span>
         </span>
         <span v-if="showSuspicions" class="info-item">
           <strong>Подозрений:</strong> {{ props.record.count_suspicions }}
         </span>
+        <span v-if="!showSuspicions" class="info-item placeholder" aria-hidden="true">&nbsp;</span>
       </div>
 
       <div class="actions-group">
@@ -24,15 +27,26 @@
     </div>
 
     <div v-if="props.record.expanded" class="record-row expanded-row">
-      <div class="expanded-info">
-        <div class="expanded-left">
-          <div class="info-item"><strong>Видео с камеры:</strong> {{ props.record.camera_video_name }}</div>
-          <div class="info-item"><strong>Видео с экрана:</strong> {{ props.record.screen_video_name }}</div>
+      <div class="expanded-wrapper">
+        <div class="expanded-grid">
+          <div class="expanded-column left-column">
+            <div class="info-item">
+              <strong>Видео с камеры:</strong> {{ props.record.camera_video_name }}
+            </div>
+            <div class="info-item">
+              <strong>Видео с экрана:</strong> {{ props.record.screen_video_name }}
+            </div>
+          </div>
+          <div class="expanded-column right-column">
+            <div class="info-item">
+              <strong>Дата создания:</strong> {{ props.record.created_date }}
+            </div>
+            <div class="info-item">
+              <strong>Дата проверки:</strong> {{ props.record.processed_date || '—' }}
+            </div>
+          </div>
         </div>
-        <div class="expanded-right">
-          <div class="info-item"><strong>Дата создания:</strong> {{ props.record.created_date }}</div>
-          <div class="info-item"><strong>Дата проверки:</strong> {{ props.record.processed_date || '—' }}</div>
-        </div>
+        <div class="actions-placeholder"></div>
       </div>
     </div>
   </div>
@@ -81,6 +95,10 @@ const goToResult = () => {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
+.record-item strong {
+  font-weight: bold;
+}
+
 .record-row {
   display: flex;
   align-items: center;
@@ -103,15 +121,19 @@ const goToResult = () => {
 .info-group {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: stretch;
   gap: 1.5rem;
   flex: 1;
 }
 
 .info-item {
+  flex: 1 1 0;
+  min-width: 180px;
   font-size: 0.95rem;
   color: #2d3748;
-  white-space: nowrap;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
 }
 
 .expanded-row .info-item {
@@ -130,7 +152,8 @@ const goToResult = () => {
   margin-left: 0.25rem;
 }
 
-.actions-group {
+.actions-group{
+  flex: 0 0 200px;
   display: flex;
   align-items: center;
   gap: 1.5rem;
@@ -169,45 +192,62 @@ const goToResult = () => {
   color: #1a202c;
 }
 
-.expanded-info {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 2rem;
+.actions-group {
+  flex: 0 0 200px;
+}
+
+.expanded-row .expanded-wrapper {
+  display: flex;
   width: 100%;
 }
 
-.expanded-left,
-.expanded-right {
+.expanded-row .expanded-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.expanded-row .expanded-column {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
 }
 
-.expanded-left .info-item {
-  text-align: left;
+.expanded-row .left-column {
+  grid-column: span 2;
 }
 
-.expanded-right .info-item {
-  text-align: left;
+.expanded-row .right-column {
+  grid-column: span 2;
+}
+
+.expanded-row .expanded-column .info-item {
+  flex: none;
+  width: 100%;
+  white-space: normal;
+  word-break: break-word;
+  display: flex;
+  flex-direction: column;
+}
+
+.expanded-row .actions-placeholder {
+  flex: 0 0 200px;
 }
 
 @media (max-width: 768px) {
-  .record-row {
+  .expanded-row .expanded-wrapper {
     flex-direction: column;
-    align-items: stretch;
   }
-
-  .info-group {
-    justify-content: space-between;
-  }
-
-  .actions-group {
-    justify-content: flex-end;
-  }
-
-  .expanded-info {
+  .expanded-row .expanded-grid {
     grid-template-columns: 1fr;
     gap: 1rem;
+  }
+  .expanded-row .left-column,
+  .expanded-row .right-column {
+    grid-column: auto;
+  }
+  .expanded-row .actions-placeholder {
+    display: none;
   }
 }
 </style>
