@@ -73,6 +73,10 @@ class Tracker:
                 }
             }
 
+        Перед началом обработки в results/<job_id>/status.json записывается
+        промежуточный статус IN_PROGRESS. После успешного завершения статус
+        обновляется на DONE, а при ошибке — на FAILED.
+
         Формат результата:
             {
                 "job_id": "123",
@@ -100,17 +104,53 @@ class Tracker:
 
         out_dir = (self._data_dir / "results" / job_id).resolve()
         out_dir.relative_to(self._data_dir)
+        out_dir.mkdir(parents=True, exist_ok=True)
+
+        status_path = out_dir / "status.json"
+        status_path.write_text(
+            json.dumps(
+                {
+                    "job_id": job_id,
+                    "status": "IN_PROGRESS",
+                },
+                ensure_ascii=False,
+                indent=2,
+            ),
+            encoding="utf-8",
+        )
 
         outputs: dict[str, Any] = {}
 
-        for input_name, input_path in {
-            "screen_video": screen_video_path,
-            "webcam_video": webcam_video_path,
-        }.items():
-            video_path = self._resolve_path(str(input_path))
-            source_out_dir = out_dir / input_name
+        try:
+            for input_name, input_path in {
+                "screen_video": screen_video_path,
+                "webcam_video": webcam_video_path,
+            }.items():
+                video_path = self._resolve_path(str(input_path))
+                source_out_dir = out_dir / input_name
 
-            with Video(video_path) as v:
-                outputs[input_name] = self.process_video(v, out_dir=source_out_dir)
+                with Video(video_path) as v:
+                    outputs[input_name] = self.process_video(v, out_dir=source_out_dir)
 
-        return {"job_id": job_id, "status": "DONE", "outputs": outputs}
+            result = {"job_id": job_id, "status": "DONE", "outputs": outputs}
+
+            status_path.write_text(
+                json.dumps(result, ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
+
+            return result
+
+        except Exception:
+            status_path.write_text(
+                json.dumps(
+                    {
+                        "job_id": job_id,
+                        "status": "FAILED",
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                ),
+                encoding="utf-8",
+            )
+            raise
