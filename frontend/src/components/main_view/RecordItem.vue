@@ -84,6 +84,7 @@ const goToResult = () => {
 
 <style scoped>
 .record-item {
+  flex-shrink: 0;
   background-color: #f8fafc;
   border-radius: 16px;
   border: 1px solid #e2e8f0;
