@@ -10,18 +10,38 @@ class Tracker:
     def __init__(self) -> None:
         self._data_dir = Path(os.environ.get("DATA_DIR", "/data")).resolve()
 
-    def _resolve_key(self, key: str) -> Path:
-        p = Path(str(key))
+    def _resolve_path(self, relative_path: str) -> Path:
+        """
+        Преобразует относительный путь внутри DATA_DIR в абсолютный путь.
+
+        Args:
+            relative_path: относительный путь к входному файлу из payload.inputs,
+                например ``videos/screen.mp4``.
+
+        Returns:
+            Абсолютный путь к файлу, расположенному внутри директории DATA_DIR.
+        """
+        p = Path(str(relative_path))
         if p.is_absolute() or ".." in p.parts:
-            raise ValueError(f"Invalid key: {key}")
+            raise ValueError(f"Invalid path: {relative_path}")
         abs_path = (self._data_dir / p).resolve()
         abs_path.relative_to(self._data_dir)
         return abs_path
 
-    def _to_key(self, path: Path) -> str:
+    def _to_relative_path(self, path: Path) -> str:
         return path.resolve().relative_to(self._data_dir).as_posix()
 
     def process_video(self, video: Video, out_dir: Optional[Path] = None) -> dict[str, str]:
+        """
+        Обрабатывает одно видео и сохраняет результаты в out_dir.
+
+        Args:
+            video: объект видео для обработки.
+            out_dir: директория, в которую нужно сохранить результаты.
+
+        Returns:
+            Словарь с относительными путями до артефактов внутри DATA_DIR.
+        """
         if out_dir is None:
             return {}
 
@@ -36,23 +56,61 @@ class Tracker:
             traj_path.write_text("{}", encoding="utf-8")
 
         return {
-            "video_info": self._to_key(info_path),
-            "trajectory": self._to_key(traj_path),
+            "video_info": self._to_relative_path(info_path),
+            "trajectory": self._to_relative_path(traj_path),
         }
 
     def process_job(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """
+        Обрабатывает задание на трекинг.
+
+        Ожидаемый формат payload:
+            {
+                "job_id": "123",
+                "inputs": {
+                    "screen_video": "uploads/screen.mp4",
+                    "webcam_video": "uploads/webcam.mp4"
+                }
+            }
+
+        Формат результата:
+            {
+                "job_id": "123",
+                "status": "DONE",
+                "outputs": {
+                    "screen_video": {
+                        "video_info": "results/123/screen_video/video_info.json",
+                        "trajectory": "results/123/screen_video/trajectory.json"
+                    },
+                    "webcam_video": {
+                        "video_info": "results/123/webcam_video/video_info.json",
+                        "trajectory": "results/123/webcam_video/trajectory.json"
+                    }
+                }
+            }
+        """
         job_id = str(payload["job_id"])
         inputs = payload.get("inputs") or {}
 
-        in_key = inputs.get("screen") or inputs.get("video")
-        if not in_key:
-            raise KeyError("payload.inputs must contain 'screen' or 'video'")
+        screen_video_path = inputs.get("screen_video")
+        webcam_video_path = inputs.get("webcam_video")
 
-        video_path = self._resolve_key(str(in_key))
+        if not screen_video_path or not webcam_video_path:
+            raise KeyError("payload.inputs must contain both 'screen_video' and 'webcam_video'")
+
         out_dir = (self._data_dir / "results" / job_id).resolve()
         out_dir.relative_to(self._data_dir)
 
-        with Video(video_path) as v:
-            outputs = self.process_video(v, out_dir=out_dir)
+        outputs: dict[str, Any] = {}
+
+        for input_name, input_path in {
+            "screen_video": screen_video_path,
+            "webcam_video": webcam_video_path,
+        }.items():
+            video_path = self._resolve_path(str(input_path))
+            source_out_dir = out_dir / input_name
+
+            with Video(video_path) as v:
+                outputs[input_name] = self.process_video(v, out_dir=source_out_dir)
 
         return {"job_id": job_id, "status": "DONE", "outputs": outputs}
