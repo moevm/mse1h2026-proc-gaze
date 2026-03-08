@@ -23,7 +23,7 @@ class Video:
         else:
             self._duration_sec = None
 
-    def _ensure_open(self) -> cv2.VideoCapture:
+    def _get_capture(self) -> cv2.VideoCapture:
         if self._video is None:
             raise RuntimeError("Video is closed.")
         return self._video
@@ -63,12 +63,12 @@ class Video:
 
     def frame_at_idx(self, frame_index: int) -> np.ndarray:
         """Return the video frame with the given frame index."""
-        if frame_index < 0:
-            raise ValueError("frame_index must be >= 0")
-        if 0 < self._frame_count <= frame_index:
+        if frame_index < 0 or (0 < self._frame_count <= frame_index):
+            if frame_index < 0:
+                raise ValueError("frame_index must be >= 0")
             raise IndexError(f"frame_index {frame_index} out of range (frame_count={self._frame_count})")
 
-        cap = self._ensure_open()
+        cap = self._get_capture()
         prev = int(cap.get(cv2.CAP_PROP_POS_FRAMES) or 0)
 
         try:
@@ -87,7 +87,7 @@ class Video:
         if start < 0:
             raise ValueError("start must be >= 0")
 
-        cap = self._ensure_open()
+        cap = self._get_capture()
         cap.set(cv2.CAP_PROP_POS_FRAMES, start)
         idx = start
 
@@ -113,7 +113,7 @@ class Video:
                 self._video = None
 
     def __enter__(self) -> "Video":
-        self._ensure_open()
+        self._get_capture()
         return self
 
     def __exit__(self, exc_type, exc, tb) -> None:
