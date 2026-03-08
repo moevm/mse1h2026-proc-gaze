@@ -7,6 +7,7 @@ from typing import Any
 import aio_pika
 from aio_pika.abc import AbstractRobustConnection
 
+from src.constants import JOB_STATUS_FAILED
 from src.tracker import Tracker
 
 AMQP_URL = os.environ["AMQP_URL"]
@@ -27,7 +28,7 @@ def _failed_result(body: bytes, error: Exception) -> dict[str, Any]:
 
     return {
         "job_id": payload_job_id,
-        "status": "FAILED",
+        "status": JOB_STATUS_FAILED,
         "error": "".join(traceback.format_exception(type(error), error, error.__traceback__)),
     }
 

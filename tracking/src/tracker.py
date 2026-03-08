@@ -3,6 +3,7 @@ import os
 from pathlib import Path
 from typing import Any, Optional
 
+from src.constants import JOB_STATUS_DONE, JOB_STATUS_FAILED, JOB_STATUS_IN_PROGRESS
 from src.video import Video
 
 
@@ -111,7 +112,7 @@ class Tracker:
             json.dumps(
                 {
                     "job_id": job_id,
-                    "status": "IN_PROGRESS",
+                    "status": JOB_STATUS_IN_PROGRESS,
                 },
                 ensure_ascii=False,
                 indent=2,
@@ -132,7 +133,7 @@ class Tracker:
                 with Video(video_path) as v:
                     outputs[input_name] = self.process_video(v, out_dir=source_out_dir)
 
-            result = {"job_id": job_id, "status": "DONE", "outputs": outputs}
+            result = {"job_id": job_id, "status": JOB_STATUS_DONE, "outputs": outputs}
 
             status_path.write_text(
                 json.dumps(result, ensure_ascii=False, indent=2),
@@ -146,7 +147,7 @@ class Tracker:
                 json.dumps(
                     {
                         "job_id": job_id,
-                        "status": "FAILED",
+                        "status": JOB_STATUS_FAILED,
                     },
                     ensure_ascii=False,
                     indent=2,
