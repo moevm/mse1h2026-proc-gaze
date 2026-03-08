@@ -28,6 +28,11 @@ class Student(Base):
 
     def __repr__(self):
         return f"<Student(student_id={self.student_id})>"
+    
+    def to_dict(self):
+        return {
+            "student_id": str(self.student_id)
+        }
 
 
 class Recording(Base):
@@ -50,6 +55,19 @@ class Recording(Base):
 
     def __repr__(self):
         return f"<Recording(recording_id={self.recording_id})>"
+    
+    def to_dict(self):
+        return {
+            "recording_id": str(self.recording_id),
+            "student_id": str(self.student_id),
+            "path_screen": self.path_screen,
+            "path_webcam": self.path_webcam,
+            "path_processed": self.path_processed,
+            "created_date": self.created_date.isoformat() if self.created_date else None,
+            "status": self.status.value if self.status else None,
+            "processed_date": self.processed_date.isoformat() if self.processed_date else None,
+            "suspicion_level": self.suspicion_level
+        }
 
 
 class SuspiciousInterval(Base):
@@ -66,6 +84,15 @@ class SuspiciousInterval(Base):
 
     def __repr__(self):
         return f"<SuspiciousInterval(sus_id={self.sus_id})>"
+    
+    def to_dict(self):
+        return {
+            "sus_id": str(self.sus_id),
+            "recording_id": str(self.recording_id),
+            "time": self.time.isoformat() if self.time else None,
+            "duration": self.duration,
+            "description": self.description
+        }
 
 
 class Notification(Base):
@@ -82,3 +109,12 @@ class Notification(Base):
 
     def __repr__(self):
         return f"<Notification(notification_id={self.notification_id})>"
+    
+    def to_dict(self):
+        return {
+            "notification_id": str(self.notification_id),
+            "recording_id": str(self.recording_id),
+            "created_date": self.created_date.isoformat() if self.created_date else None,
+            "sent_date": self.sent_date.isoformat() if self.sent_date else None,
+            "type": self.type.value if self.type else None
+        }

@@ -50,14 +50,53 @@ async def handle_upload_files(
         db.rollback()
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to create recording")
 
-@router.get("{id}")
-async def get_recording(id: int):
-    pass
+@router.get("/{id}")
+async def get_recording(id: str, db: Session = Depends(get_db)):
+    try:
+        recording_uuid = uuid.UUID(id)
+        recording = db.query(Recording).filter(Recording.recording_id == recording_uuid).first()
+        
+        if not recording:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Recording not found")
+        
+        return JSONResponse(
+            content=recording.to_dict(),
+            status_code=status.HTTP_200_OK
+        )
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid recording_id format. Expected UUID.")
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to get recording: {str(e)}")
 
 @router.get("")
-async def get_recordings():
-    pass
+async def get_recordings(db: Session = Depends(get_db)):
+    try:
+        recordings = db.query(Recording).all()
+        return JSONResponse(
+            content={"recordings": [recording.to_dict() for recording in recordings]},
+            status_code=status.HTTP_200_OK
+        )
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to get recordings: {str(e)}")
 
 @router.delete("/{id}")
-async def delete_recording(id: int):
-    pass
+async def delete_recording(id: str, db: Session = Depends(get_db)):
+    try:
+        recording_uuid = uuid.UUID(id)
+        recording = db.query(Recording).filter(Recording.recording_id == recording_uuid).first()
+        
+        if not recording:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Recording not found")
+        
+        db.delete(recording)
+        db.commit()
+        
+        return JSONResponse(
+            content={"message": "Recording deleted successfully"},
+            status_code=status.HTTP_200_OK
+        )
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid recording_id format. Expected UUID.")
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to delete recording: {str(e)}")
