@@ -6,25 +6,34 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class GazeMapper(nn.Module):
     def __init__(self):
+        super().__init__()
+        
         # we believe that webcam is on the top and is parallel to the screen surface
-        self.rotation_mat = np.ndarray([[-1,  0, 0],
-                                        [ 0, -1, 0],
-                                        [ 0,  0, 1]])
-        self.shift_vector = nn.Parameter(torch.Tensor([0, 0, 0], device=device))
+        self.rotation_mat = torch.tensor([[-1,  0, 0 ],
+                                          [ 0, -1, 0 ],
+                                          [ 0,  0, 1 ]], device=device, dtype=torch.float32)
+        self.translation_vec = nn.Parameter(torch.tensor([1.0, 1.0, 1.0], device=device, dtype=torch.float32))
 
-    def __calc_lambda(self, gaze_vec: np.ndarray) -> np.float32:
-        z_s = np.array([0, 0, 1])
-        z_g = np.dot(self.rotation_mat, z_s)
+    def __calc_lambda(self, gaze_vec: np.ndarray|torch.Tensor) -> np.float32:
+        z_s = torch.tensor([0, 0, 1], device=device, dtype=torch.float32)
+        z_g = self.rotation_mat @ z_s
         
-        t_g = np.dot(self.rotation_mat, self.shift_vector)
-        l = np.dot(z_g, t_g) / np.dot(z_g, gaze_vec)
+        if isinstance(gaze_vec, np.ndarray):
+            gaze_tensor = torch.tensor(gaze_vec, device=device, dtype=torch.float32)
+        else: 
+            gaze_tensor = gaze_vec
+            
+        t_g = self.rotation_mat @ self.translation_vec
+        l = (z_g @ t_g) / (z_g @ gaze_tensor)
         
-        return l
+        return l.item()
         
     def project(self, gaze_vec: np.ndarray) -> np.ndarray:
+        gaze_tensor = torch.tensor(gaze_vec, dtype=torch.float32, device=device)
         l = self.__calc_lambda(gaze_vec)
+        print(l)
         
-        return np.dot(self.rotation_mat, l*gaze_vec) + self.shift_vector
+        return self.rotation_mat @ (l * gaze_tensor) + self.translation_vec
     
     def calibrate(self) -> None:
         pass
