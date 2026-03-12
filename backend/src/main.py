@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from .routers import recording_router, notification_router, suspicious_router, student_router
-from .database import engine, Base
+from config.database import engine, Base
 
 app = FastAPI()
 

@@ -1,15 +1,16 @@
-from fastapi import APIRouter, HTTPException, status, UploadFile, Depends
-from fastapi.responses import JSONResponse
-from sqlalchemy.orm import Session
 import uuid
 
+from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi.responses import JSONResponse
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from config.database import get_db
 from ..models import SuspiciousInterval
-from ..database import get_db
 
 router = APIRouter(prefix="/suspicious", tags=["suspicious"])
 
 @router.get("/{id}")
-async def get_suspicious_intervals_by_id(id: str, db: Session = Depends(get_db)):
+async def get_suspicious_intervals_by_id(id: str, db: AsyncSession = Depends(get_db)):
     try:
         recording_uuid = uuid.UUID(id)
         suspicious_intervals = db.query(SuspiciousInterval).filter(
