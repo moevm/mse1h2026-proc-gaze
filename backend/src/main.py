@@ -1,21 +1,18 @@
-from fastapi import FastAPI, UploadFile
-from fastapi.responses import JSONResponse
-from fastapi import status
+from fastapi import FastAPI
+from .routers import recording_router, notification_router, suspicious_router, student_router
+from .database import engine, Base
 
 app = FastAPI()
 
-@app.post("/upload")
-async def handle_upload_files(webcam: UploadFile = None, screencast: UploadFile = None):
-    if webcam is None or screencast is None:
-        return JSONResponse(
-            content={"error": "Expected 'webcam' and 'screencast' files."},
-            status_code=status.HTTP_400_BAD_REQUEST
-        )
-    
-    print("webcam type:", webcam.content_type)
-    print("screencast type:", screencast.content_type)
+app.include_router(recording_router.router)
+app.include_router(notification_router.router)
+app.include_router(suspicious_router.router)
+app.include_router(student_router.router)
 
-    return JSONResponse(
-        content={'id': 12345},
-        status_code=status.HTTP_200_OK
-    )
+@app.on_event("startup")
+def on_startup():
+    Base.metadata.create_all(bind=engine)
+
+@app.get("/")
+async def root():
+    return {"message": "API started"}

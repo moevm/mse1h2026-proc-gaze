@@ -1,14 +1,10 @@
 # Usage
 
-Currently implemented functionality can be tested like this:
+* Start backend and DB with `docker compose up -d`
+* Create student with `curl -X POST localhost:8000/student`
+* Expect output like `{"student_id":"691adb4f-f1af-42dc-ac3a-928555f461cc"}`
+* Upload recording with `curl -F 'webcam=@vid1.mp4' -F 'screencast=@vid2.mp4' -F 'student_id=691adb4f-f1af-42dc-ac3a-928555f461cc' localhost:8000/recording/upload`
+* Expect output like `{"id":"c9fe5f08-d241-44ca-bd0b-6571975ced7c"}`
+* Shutdown backend and DB with `docker compose down`
 
-* Build image with `./scripts/build.sh`.
-* Run container with `./scripts/run.sh`.
-* Prepare some videos.
-* Send them with `curl -F 'webcam=@vid1.mp4' -F 'screencast=@vid2.mp4' localhost:8000/upload`.
-  Expect `{"id":12345}`.
-* Or send only one of them with `curl -F 'webcam=@vid1.mp4' localhost:8000/upload`.
-  Expect `{"error":"Expected 'webcam' and 'screencast' files."}`.
-* Or even send empty POST request with `curl -X POST localhost:8000/upload`.
-  Expect `{"error":"Expected 'webcam' and 'screencast' files."}`.
-* Kill container with `docker container rm -f proc-gaze-backend`.
+You can inspect DB with `docker exec -it postgres-db psql -U postgres -d gaze`.
