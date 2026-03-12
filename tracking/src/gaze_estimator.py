@@ -173,6 +173,9 @@ class GazeEstimator:
         output = self._gaze_vector_estimation_model((preprocessed_left, preprocessed_right, angles))
         output = output[self._gaze_vector_estimation_model.output(0)].squeeze()
 
+        l = np.linalg.norm(output)
+        output /= l if l != 0 else 1
+        
         return output
 
     def estimate(self, frame: np.ndarray) -> Tuple[List, List, List, List]:
