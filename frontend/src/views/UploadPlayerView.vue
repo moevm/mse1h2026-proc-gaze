@@ -43,6 +43,20 @@
         </div>
       </div>
 
+      <div class="uuid-section">
+        <label for="studentUuid" class="uuid-label">UUID студента</label>
+        <input
+            id="studentUuid"
+            type="text"
+            v-model="studentUuid"
+            placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+            :class="['uuid-input', { 'invalid': studentUuid && !isValidUuid }]"
+        />
+        <p v-if="studentUuid && !isValidUuid" class="error-message">
+          Введите корректный UUID (формат: 8-4-4-4-12 шестнадцатеричных цифр)
+        </p>
+      </div>
+
       <div class="submit-section">
         <button class="submit-btn" :disabled="!canSubmit" @click="submit">
           Отправить
@@ -76,6 +90,13 @@ const screenDuration = ref(null)
 const screenCurrentTime = ref(0)
 const screenIsPlaying = ref(false)
 
+const studentUuid = ref('')
+
+const isValidUuid = computed(() => {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  return uuidRegex.test(studentUuid.value)
+})
+
 const isSyncing = ref(false)
 const cameraProgrammaticSeek = ref(false)
 const screenProgrammaticSeek = ref(false)
@@ -100,6 +121,7 @@ const handleCameraUpload = ({ file, url, fileName }) => {
     isSyncing.value = false
   }
 }
+
 const handleCameraClear = () => {
   if (cameraVideoSrc.value) {
     URL.revokeObjectURL(cameraVideoSrc.value)
@@ -130,6 +152,7 @@ const handleScreenUpload = ({ file, url, fileName }) => {
     isSyncing.value = false
   }
 }
+
 const handleScreenClear = () => {
   if (screenVideoSrc.value) {
     URL.revokeObjectURL(screenVideoSrc.value)
@@ -258,6 +281,7 @@ const onPlay = (source) => {
     handleScreenPlay()
   }
 }
+
 const onPause = (source) => {
   if (source === 'camera') {
     cameraIsPlaying.value = false
@@ -268,10 +292,13 @@ const onPause = (source) => {
   }
 }
 
-const canSubmit = computed(() => cameraVideoFile.value && screenVideoFile.value)
+const canSubmit = computed(() =>
+    cameraVideoFile.value && screenVideoFile.value && isValidUuid.value
+)
+
 const submit = () => {
   if (!canSubmit.value) return
-  // API запрос
+  //API запрос
   router.push({ name: 'MainView' })
 }
 </script>
@@ -321,8 +348,48 @@ const submit = () => {
   color: #2c3e50;
 }
 
+.uuid-section {
+  margin: 2rem auto;
+  max-width: 500px;
+  text-align: left;
+}
+
+.uuid-label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: #2c3e50;
+}
+
+.uuid-input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  border: 2px solid #d1d9e6;
+  border-radius: 12px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.uuid-input:focus {
+  border-color: #007bff;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+.uuid-input.invalid {
+  border-color: #dc3545;
+  background-color: #fff8f8;
+}
+
+.error-message {
+  margin-top: 0.5rem;
+  color: #dc3545;
+  font-size: 0.9rem;
+}
+
 .submit-section {
-  margin-top: 3rem;
+  margin-top: 2rem;
   text-align: center;
 }
 
