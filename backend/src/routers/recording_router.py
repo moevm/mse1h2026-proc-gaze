@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status, UploadFile, Form
+from fastapi import APIRouter, status, UploadFile, Form
 from fastapi.responses import JSONResponse
 
 from crud import recording_crud
