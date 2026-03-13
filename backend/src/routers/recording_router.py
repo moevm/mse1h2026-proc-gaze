@@ -1,7 +1,7 @@
 from fastapi import APIRouter, status, UploadFile, Form
 from fastapi.responses import JSONResponse
 
-from crud import recording_crud
+from src.crud import recording_crud
 
 router = APIRouter(prefix="/recording", tags=["recording"])
 

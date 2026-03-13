@@ -1,6 +1,6 @@
 from fastapi import APIRouter, status
 from fastapi.responses import JSONResponse
-from crud import student_crud
+from src.crud import student_crud
 
 router = APIRouter(prefix="/student", tags=["student"])
 

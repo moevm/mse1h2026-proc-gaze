@@ -6,7 +6,7 @@ from sqlalchemy import Column, String, DateTime, Float, ForeignKey, Enum, Time
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
-from config.database import Base
+from src.config.database import Base
 
 
 class RecordingStatus(PyEnum):

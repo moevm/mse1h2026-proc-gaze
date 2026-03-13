@@ -6,8 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 from starlette.exceptions import HTTPException
 
-from config.connection import connection
-from models import Recording
+from src.config.connection import connection
+from src.models import Recording
 
 
 @connection

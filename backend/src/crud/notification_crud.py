@@ -6,8 +6,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
-from config.connection import connection
-from models import Notification
+from src.config.connection import connection
+from src.models import Notification
 
 
 @connection

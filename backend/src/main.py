@@ -1,7 +1,7 @@
 import uvicorn
 from fastapi import FastAPI
 
-from routers import recording_router, notification_router, suspicious_router, student_router
+from src.routers import recording_router, notification_router, suspicious_router, student_router
 
 app = FastAPI()
 

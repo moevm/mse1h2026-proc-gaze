@@ -1,7 +1,7 @@
 from fastapi import APIRouter, status
 from fastapi.responses import JSONResponse
 
-from crud import notification_crud
+from src.crud import notification_crud
 
 router = APIRouter(prefix="/notification", tags=["notification"])
 
