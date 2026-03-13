@@ -1,0 +1,1 @@
+export { uploadApi } from './modules/upload.api'
