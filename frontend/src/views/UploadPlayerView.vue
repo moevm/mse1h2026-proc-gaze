@@ -1,5 +1,8 @@
 <template>
   <div class="upload-view">
+
+    <div class="back-button" @click="goToMain">Вернуться на главную</div>
+
     <div class="content-card">
       <h1 class="title">Загрузка видео</h1>
 
@@ -299,6 +302,10 @@ const canSubmit = computed(() =>
 const submit = () => {
   if (!canSubmit.value) return
   //API запрос
+  goToMain()
+}
+
+const goToMain = () => {
   router.push({ name: 'MainView' })
 }
 </script>
@@ -311,6 +318,29 @@ const submit = () => {
   align-items: center;
   justify-content: center;
   padding: 2rem;
+}
+
+.back-button {
+  position: absolute;
+  top: 2rem;
+  left: 2rem;
+  padding: 0.5rem 1rem;
+  background-color: rgba(255, 255, 255, 0.9);
+  color: #007bff;
+  border: 1px solid #007bff;
+  border-radius: 30px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 500;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: background-color 0.2s, color 0.2s;
+  z-index: 10;
+}
+
+.back-button:hover {
+  background-color: #007bff;
+  color: white;
+  border-color: #007bff;
 }
 
 .content-card {
