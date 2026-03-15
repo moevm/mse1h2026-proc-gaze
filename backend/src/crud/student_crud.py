@@ -23,7 +23,8 @@ async def get_student(id: str, session: AsyncSession) -> Optional[Student]:
 
 @connection
 async def get_students(session: AsyncSession) -> Optional[List[Student]]:
-    return (await session.execute(select(Student))).scalars().all()
+    result = await session.execute(select(Student))
+    return result
 
 @connection
 async def create_student(session: AsyncSession) -> Student:

@@ -12,7 +12,8 @@ from src.models import Notification
 
 @connection
 async def get_notifications(session: AsyncSession):
-    notifications = session.execute(select(Notification))
+    notifications = await session.execute(select(Notification))
+    notifications = notifications.scalars().all()
     return notifications
 
 @connection
@@ -22,9 +23,10 @@ async def delete_notification(id: str, session: AsyncSession):
     except ValueError:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail="Invalid notification_id format. Expected UUID.")
-    notification = session.execute(select(Notification).where(Notification.notification_id == notification_uuid))
-    if not notification:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Notification not found")
+    response = await session.execute(select(Notification).where(Notification.notification_id == notification_uuid))
+    notification = response.scalar_one_or_none()
+    if notification is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"notification not found with uuid: {notification_uuid}")
     await session.delete(notification)
     await session.commit()
 
@@ -35,10 +37,9 @@ async def mark_notification_as_viewed(id: str, session: AsyncSession):
     except ValueError:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail="Invalid notification_id format. Expected UUID.")
-    notification = session.query(Notification).filter(Notification.notification_id == notification_uuid).first()
-
-    if not notification:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Notification not found")
-
+    response = await session.execute(select(Notification).where(Notification.notification_id == notification_uuid))
+    notification = response.scalar_one_or_none()
+    if notification is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"notification not found with uuid: {notification_uuid}")
     notification.sent_date = datetime.now(timezone.utc)
     await session.commit()

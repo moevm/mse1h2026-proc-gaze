@@ -2,7 +2,7 @@ from fastapi import APIRouter, status
 from fastapi.responses import JSONResponse
 from src.crud import student_crud
 
-router = APIRouter(prefix="/student", tags=["student"])
+router = APIRouter(prefix="/students", tags=["student"])
 
 @router.get("/{id}")
 async def get_student(id: str):

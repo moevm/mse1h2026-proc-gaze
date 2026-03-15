@@ -16,6 +16,8 @@ async def get_suspicious_intervals_by_id(id: str, session: AsyncSession):
     except ValueError:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail="Invalid recording_id format. Expected UUID.")
-    suspicious_intervals = session.execute(select(SuspiciousInterval).where(
+
+    suspicious_intervals = await session.execute(select(SuspiciousInterval).where(
         SuspiciousInterval.recording_id == recording_uuid))
-    return suspicious_intervals
+    result = suspicious_intervals.scalars().all()
+    return result

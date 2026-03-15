@@ -35,9 +35,10 @@ async def get_recording(id: str, session: AsyncSession):
     except ValueError:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail="Invalid recording_id format. Expected UUID.")
-    recording = session.execute(select(Recording).where(Recording.recording_id == recording_uuid))
-    if not recording:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Recording not found")
+    recording = await session.execute(select(Recording).where(Recording.recording_id == recording_uuid))
+    recording = recording.scalar_one_or_none()
+    if recording is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"recording not found with uuid: {recording_uuid}")
     return recording
 
 @connection

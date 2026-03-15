@@ -13,7 +13,3 @@ app.include_router(student_router.router)
 @app.get("/")
 async def root():
     return {"message": "API started"}
-
-
-if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", log_level="info")
