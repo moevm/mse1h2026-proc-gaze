@@ -13,7 +13,7 @@ def connection(method):
         async with SessionLocal() as session:
             try:
                 return await method(*args, session=session, **kwargs)
-            except HTTPException as e: # TODO: нужно обрабатывать различные ошибки в зависимости от типа и оборачивать в HTTPException
+            except HTTPException as e:  # TODO: нужно обрабатывать различные ошибки в зависимости от типа и оборачивать в HTTPException
                 logging.error(e.detail)
                 raise e
             except Exception as e:

@@ -5,9 +5,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 from starlette.exceptions import HTTPException
 
-from schemas.suspicious_schema import SuspiciousRead
-from src.util.connection import connection
+from src.schemas.suspicious_schema import SuspiciousRead
 from src.models import SuspiciousInterval
+from src.util.connection import connection
 
 
 @connection

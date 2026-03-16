@@ -6,9 +6,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
-from schemas.notification_schema import NotificationRead
-from src.util.connection import connection
+from src.schemas.notification_schema import NotificationRead
 from src.models import Notification
+from src.util.connection import connection
 
 
 @connection

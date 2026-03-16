@@ -1,9 +1,8 @@
 from typing import List
 
 from fastapi import APIRouter, status
-from fastapi.responses import JSONResponse
 
-from schemas.notification_schema import NotificationRead
+from src.schemas.notification_schema import NotificationRead
 from src.crud import notification_crud
 
 router = APIRouter(prefix="/notification", tags=["notification"])
@@ -23,4 +22,3 @@ async def delete_notification(id: str):
 @router.put("/{id}", status_code=status.HTTP_200_OK)
 async def mark_notification_as_viewed(id: str):
     await notification_crud.mark_notification_as_viewed(id)
-

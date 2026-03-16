@@ -1,9 +1,8 @@
-import uuid
 from typing import List
 
 from fastapi import APIRouter, status
 
-from schemas.student_schema import StudentRead
+from src.schemas.student_schema import StudentRead
 from src.crud import student_crud
 
 router = APIRouter(prefix="/students", tags=["student"])

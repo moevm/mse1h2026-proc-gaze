@@ -1,14 +1,14 @@
 import uuid
-from typing import Optional, List
+from typing import List
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 from starlette.exceptions import HTTPException
 
-from schemas.student_schema import StudentRead
-from src.util.connection import connection
+from src.schemas.student_schema import StudentRead
 from src.models import Student
+from src.util.connection import connection
 
 
 @connection
@@ -22,11 +22,13 @@ async def get_student(id: str, session: AsyncSession) -> StudentRead:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student not found")
     return StudentRead.model_validate(student)
 
+
 @connection
 async def get_students(session: AsyncSession) -> List[StudentRead]:
     result = await session.execute(select(Student))
     students = result.scalars().all()
     return [StudentRead.model_validate(student) for student in students]
+
 
 @connection
 async def create_student(session: AsyncSession) -> StudentRead:

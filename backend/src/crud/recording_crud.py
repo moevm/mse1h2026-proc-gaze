@@ -1,18 +1,17 @@
-
 import logging
 import uuid
-
 from datetime import datetime
-from fastapi import UploadFile, Form, Path
+
+from fastapi import UploadFile, Path
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 from starlette.exceptions import HTTPException
 
-from schemas.recording_schema import RecordingRead
-from src.util.connection import connection
+from src.schemas.recording_schema import RecordingRead
 from src.models import Recording
-from util import file_storage
+from src.util.connection import connection
+from src.util import file_storage
 
 
 @connection
@@ -27,12 +26,14 @@ async def delete_recording(id: str, session: AsyncSession):
     try:
         recording_uuid = uuid.UUID(id)
     except ValueError:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid recording_id format. Expected UUID.")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="Invalid recording_id format. Expected UUID.")
     recording = session.execute(select(Recording).where(Recording.recording_id == recording_uuid))
     if not recording:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Recording not found")
     await session.delete(recording)
     await session.commit()
+
 
 @connection
 async def get_recording(id: str, session: AsyncSession):
@@ -44,12 +45,15 @@ async def get_recording(id: str, session: AsyncSession):
     recording = await session.execute(select(Recording).where(Recording.recording_id == recording_uuid))
     recording = recording.scalar_one_or_none()
     if recording is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"recording not found with uuid: {recording_uuid}")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail=f"recording not found with uuid: {recording_uuid}")
     return recording
+
 
 async def get_webcam(id: str):
     recording = await get_recording(id)
     return await file_storage.get_file(recording.path_webcam)
+
 
 async def get_screen(id: str):
     recording = await get_recording(id)
@@ -57,15 +61,15 @@ async def get_screen(id: str):
 
 
 @connection
-async def create_recording(    student_id: str,
-    webcam: UploadFile,
-    screencast: UploadFile, session: AsyncSession):
-
+async def create_recording(student_id: str,
+                           webcam: UploadFile,
+                           screencast: UploadFile, session: AsyncSession):
     if webcam is None or screencast is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail="Expected 'webcam' and 'screencast' files.")
 
-    logging.info(f"student_id {student_id}, webcam type: {webcam.content_type}, screencast type: {screencast.content_type}")
+    logging.info(
+        f"student_id {student_id}, webcam type: {webcam.content_type}, screencast type: {screencast.content_type}")
     try:
         student_uuid = uuid.UUID(student_id)
     except ValueError:

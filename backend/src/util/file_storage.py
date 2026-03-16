@@ -1,5 +1,4 @@
 import logging
-from pathlib import Path
 
 import aiofiles
 from fastapi import UploadFile
@@ -7,9 +6,11 @@ from starlette import status
 from starlette.exceptions import HTTPException
 from starlette.responses import FileResponse
 
+from src.util.config import UPLOAD_DIR
+
 
 async def save_upload_file(upload_file: UploadFile, destination: str) -> None:
-    path = Path(destination)
+    path = UPLOAD_DIR / destination
     path.parent.mkdir(parents=True, exist_ok=True)
     try:
         async with aiofiles.open(path, 'wb') as out_file:
@@ -23,7 +24,7 @@ async def save_upload_file(upload_file: UploadFile, destination: str) -> None:
 
 
 async def get_file(path: str) -> FileResponse:
-    file_path = Path(path)
+    file_path = UPLOAD_DIR / path
     if not file_path.exists():
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

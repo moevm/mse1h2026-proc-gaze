@@ -36,7 +36,7 @@ services:
     image: tracking-backend:latest
     environment:
       DATA_DIR: /data
-      DATABASE_URL: postgresql://tracking:tracking@db:5432/tracking
+      DATABASE_URL: postgresql+asyncpg://tracking:tracking@db:5432/tracking
       AMQP_URL: amqp://guest:guest@rabbitmq:5672/
       AMQP_QUEUE: tracking.jobs
       AMQP_RESULT_QUEUE: tracking.results
@@ -49,35 +49,6 @@ services:
         condition: service_healthy
     ports:
       - "8000:8000"
-
-  tracker:
-    build:
-      context: ./tracking
-      dockerfile: Dockerfile
-    image: tracking-tracker:latest
-    environment:
-      DATA_DIR: /data
-      DATABASE_URL: postgresql://tracking:tracking@db:5432/tracking
-      AMQP_URL: amqp://guest:guest@rabbitmq:5672/
-      AMQP_QUEUE: tracking.jobs
-      AMQP_RESULT_QUEUE: tracking.results
-    volumes:
-      - shared_data:/data
-    depends_on:
-      db:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    image: tracking-frontend:latest
-    ports:
-      - "80:80"
-    depends_on:
-      - backend
 
 volumes:
   shared_data:
