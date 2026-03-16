@@ -7,7 +7,7 @@ from starlette import status
 from starlette.exceptions import HTTPException
 
 from schemas.student_schema import StudentRead
-from src.config.connection import connection
+from src.util.connection import connection
 from src.models import Student
 
 

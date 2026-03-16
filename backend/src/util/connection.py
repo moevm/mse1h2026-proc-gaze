@@ -4,7 +4,7 @@ from functools import wraps
 from starlette import status
 from starlette.exceptions import HTTPException
 
-from src.config.database import SessionLocal
+from src.util.database import SessionLocal
 
 
 def connection(method):

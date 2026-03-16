@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
 from schemas.notification_schema import NotificationRead
-from src.config.connection import connection
+from src.util.connection import connection
 from src.models import Notification
 
 

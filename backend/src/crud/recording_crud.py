@@ -1,6 +1,8 @@
+
 import logging
 import uuid
 
+from datetime import datetime
 from fastapi import UploadFile, Form, Path
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -8,8 +10,9 @@ from starlette import status
 from starlette.exceptions import HTTPException
 
 from schemas.recording_schema import RecordingRead
-from src.config.connection import connection
+from src.util.connection import connection
 from src.models import Recording
+from util import file_storage
 
 
 @connection
@@ -42,7 +45,16 @@ async def get_recording(id: str, session: AsyncSession):
     recording = recording.scalar_one_or_none()
     if recording is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"recording not found with uuid: {recording_uuid}")
-    return RecordingRead.model_validate(recording)
+    return recording
+
+async def get_webcam(id: str):
+    recording = await get_recording(id)
+    return await file_storage.get_file(recording.path_webcam)
+
+async def get_screen(id: str):
+    recording = await get_recording(id)
+    return await file_storage.get_file(recording.path_screen)
+
 
 @connection
 async def create_recording(    student_id: str,
@@ -59,11 +71,12 @@ async def create_recording(    student_id: str,
     except ValueError:
         return HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                              detail="Invalid student_id format. Expected UUID.")
-
+    now = datetime.now()
     recording_uuid = uuid.uuid4()
-    webcam_path = f"/files/{recording_uuid}_webcam{Path(webcam.filename).suffix}"
-    screencast_path = f"/files/{recording_uuid}_screencast{Path(screencast.filename).suffix}"
-
+    webcam_path = f"/{now}/{recording_uuid}_webcam{Path(webcam.filename).suffix}"
+    screencast_path = f"/{now}/{recording_uuid}_screencast{Path(screencast.filename).suffix}"
+    await file_storage.save_upload_file(webcam, webcam_path)
+    await file_storage.save_upload_file(screencast, screencast_path)
     recording = Recording(
         student_id=student_uuid,
         path_webcam=str(webcam_path),

@@ -1,6 +1,7 @@
 from typing import List
 
 from fastapi import APIRouter, status, UploadFile, Form
+from starlette.responses import FileResponse
 
 from schemas.recording_schema import RecordingRead
 from src.crud import recording_crud
@@ -17,10 +18,16 @@ async def handle_upload_files(
     return recording
 
 
-@router.get("/{id}", response_model=RecordingRead)
-async def get_recording(id: str):
-    recording = await recording_crud.get_recording(id)
-    return recording
+@router.get("/screen/{id}")
+async def get_screencast(id: str):
+    screencast = await recording_crud.get_screen(id)
+    return screencast
+
+@router.get("/webcam/{id}")
+async def get_webcam(id: str):
+    webcam = await recording_crud.get_webcam(id)
+    return webcam
+
 
 @router.get("", response_model=List[RecordingRead])
 async def get_recordings():

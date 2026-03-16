@@ -6,7 +6,7 @@ from starlette import status
 from starlette.exceptions import HTTPException
 
 from schemas.suspicious_schema import SuspiciousRead
-from src.config.connection import connection
+from src.util.connection import connection
 from src.models import SuspiciousInterval
 
 
