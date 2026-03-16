@@ -1,3 +1,4 @@
+import logging
 import uuid
 
 from fastapi import UploadFile, Form, Path
@@ -6,14 +7,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 from starlette.exceptions import HTTPException
 
+from schemas.recording_schema import RecordingRead
 from src.config.connection import connection
 from src.models import Recording
 
 
 @connection
 async def get_recordings(session: AsyncSession):
-    recordings = session.execute(select(Recording).where(Recording.recording_id == id))
-    return recordings
+    recordings = await session.execute(select(Recording))
+    recordings = recordings.scalars().all()
+    return [RecordingRead.model_validate(recording) for recording in recordings]
 
 
 @connection
@@ -31,7 +34,7 @@ async def delete_recording(id: str, session: AsyncSession):
 @connection
 async def get_recording(id: str, session: AsyncSession):
     try:
-        recording_uuid = uuid.UUID(id) #TODO: PYDANTIC спасет от дублирования
+        recording_uuid = uuid.UUID(id)
     except ValueError:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail="Invalid recording_id format. Expected UUID.")
@@ -39,20 +42,18 @@ async def get_recording(id: str, session: AsyncSession):
     recording = recording.scalar_one_or_none()
     if recording is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"recording not found with uuid: {recording_uuid}")
-    return recording
+    return RecordingRead.model_validate(recording)
 
 @connection
 async def create_recording(    student_id: str,
     webcam: UploadFile,
     screencast: UploadFile, session: AsyncSession):
 
-    if webcam is None or screencast is None: # TODO: PYDANTIC для валидации полей
+    if webcam is None or screencast is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail="Expected 'webcam' and 'screencast' files.")
 
-    print("student_id:", student_id)
-    print("webcam type:", webcam.content_type)
-    print("screencast type:", screencast.content_type)
+    logging.info(f"student_id {student_id}, webcam type: {webcam.content_type}, screencast type: {screencast.content_type}")
     try:
         student_uuid = uuid.UUID(student_id)
     except ValueError:
@@ -71,4 +72,4 @@ async def create_recording(    student_id: str,
     session.add(recording)
     await session.commit()
     await session.refresh(recording)
-    return recording
+    return RecordingRead.model_validate(recording)

@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 from starlette.exceptions import HTTPException
 
+from schemas.suspicious_schema import SuspiciousRead
 from src.config.connection import connection
 from src.models import SuspiciousInterval
 
@@ -18,6 +19,6 @@ async def get_suspicious_intervals_by_id(id: str, session: AsyncSession):
                             detail="Invalid recording_id format. Expected UUID.")
 
     suspicious_intervals = await session.execute(select(SuspiciousInterval).where(
-        SuspiciousInterval.recording_id == recording_uuid))
-    result = suspicious_intervals.scalars().all()
-    return result
+        SuspiciousInterval.recording_id == recording_uuid).order_by(SuspiciousInterval.time))
+    suspicious_intervals = suspicious_intervals.scalars().all()
+    return [SuspiciousRead.model_validate(suspicious_interval) for suspicious_interval in suspicious_intervals]

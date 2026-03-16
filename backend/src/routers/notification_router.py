@@ -1,29 +1,26 @@
+from typing import List
+
 from fastapi import APIRouter, status
 from fastapi.responses import JSONResponse
 
+from schemas.notification_schema import NotificationRead
 from src.crud import notification_crud
 
 router = APIRouter(prefix="/notification", tags=["notification"])
 
-@router.get("")
+
+@router.get("", response_model=List[NotificationRead])
 async def get_notifications():
     notifications = await notification_crud.get_notifications()
-    return JSONResponse(
-        content={"notifications": [notification.to_dict() for notification in notifications]},
-        status_code=status.HTTP_200_OK
-    )
+    return notifications
 
-@router.delete("/{id}")
+
+@router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_notification(id: str):
     await notification_crud.delete_notification(id)
-    return JSONResponse(
-        content={"message": "Notification deleted successfully"},
-        status_code=status.HTTP_200_OK
-    )
-@router.put("/{id}")
+
+
+@router.put("/{id}", status_code=status.HTTP_200_OK)
 async def mark_notification_as_viewed(id: str):
-    notification = await notification_crud.mark_notification_as_viewed(id)
-    return JSONResponse(
-        content=notification.to_dict(),
-        status_code=status.HTTP_200_OK
-    )
+    await notification_crud.mark_notification_as_viewed(id)
+
