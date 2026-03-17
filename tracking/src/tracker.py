@@ -1,4 +1,4 @@
-from src.utils import *
+from tracking.src.constants import *
 from src.gaze_estimator import *
 from src.gaze_mapper import *
 
