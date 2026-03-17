@@ -11,9 +11,11 @@ MODELS = \
     "gaze_vector_estimation": ["gaze-estimation-adas-0002"]
 }
 
+# hand-picked indices for OpenVINO model (no docs exists)
 EYE_INDICES = list(range(60, 76)) + [33]
 RIGHT_EYE_INDICES = [0, 1, 2, 3, 4, 5, 6, 7, 16]
 LEFT_EYE_INDICES  = [8, 9, 10, 11, 12, 13, 14, 15]
+
 JOB_STATUS_IN_PROGRESS = "IN_PROGRESS"
 JOB_STATUS_DONE = "DONE"
 JOB_STATUS_FAILED = "FAILED"

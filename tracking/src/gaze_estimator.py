@@ -27,11 +27,12 @@ class GazeEstimator:
         
         return model
     
-    def __preprocess_image(self, image: np.ndarray, shape: Tuple[int, int]) -> np.ndarray:
+    @staticmethod
+    def preprocess_image(image: np.ndarray, shape: Tuple[int, int]) -> np.ndarray:
         h, w = shape
         
         resized_image = cv2.resize(image, (w, h))
-        rgb_image = cv2.cvtColor(resized_image, cv2.COLOR_BGR2RGB)
+        rgb_image = resized_image[..., ::-1] # cv2.cvtColor(resized_image, cv2.COLOR_BGR2RGB) same?
         preprocessed = np.transpose(rgb_image, (2, 0, 1)) # C W H
         preprocessed = np.expand_dims(preprocessed, axis=0) # N C W H
 
@@ -41,7 +42,7 @@ class GazeEstimator:
         h, w = shape
         model_hw = self._face_detection_model.input(0).shape[2:4]
         
-        preprocessed_image = self.__preprocess_image(image, model_hw)
+        preprocessed_image = self.preprocess_image(image, model_hw)
         
         output = self._face_detection_model(preprocessed_image)
         output = output[self._face_detection_model.output(0)].squeeze()
@@ -64,7 +65,7 @@ class GazeEstimator:
         h, w = shape
         
         model_hw = self._eyes_countours_detection_model.input(0).shape[2:4]
-        preprocessed_image = self.__preprocess_image(face_image, model_hw)
+        preprocessed_image = self.preprocess_image(face_image, model_hw)
         
         output = self._eyes_countours_detection_model(preprocessed_image)
         output = output[self._eyes_countours_detection_model.output(0)].squeeze()
@@ -76,7 +77,7 @@ class GazeEstimator:
         eyes_points = np.array([(int(x * w / heatmap_size), int(y * h / heatmap_size)) for x, y in landmarks[EYE_INDICES]])
 
         return eyes_points[LEFT_EYE_INDICES], eyes_points[RIGHT_EYE_INDICES]
-        
+    
     def __extract_landmarks(self, heatmaps: np.ndarray) -> np.ndarray:
         landmarks = []
         
@@ -103,7 +104,7 @@ class GazeEstimator:
         h, w = shape
         
         model_hw = self._pupils_detection_model.input(0).shape[2:4]
-        preprocessed_image = self.__preprocess_image(face_image, model_hw)
+        preprocessed_image = self.preprocess_image(face_image, model_hw)
         
         output = self._pupils_detection_model(preprocessed_image)
         output = output[self._pupils_detection_model.output(0)].squeeze()
@@ -153,7 +154,7 @@ class GazeEstimator:
         
     def __estimate_head_pose(self, face_image: np.ndarray) -> np.ndarray:
         model_hw = self._head_pose_estimation_model.input(0).shape[2:4]
-        preprocessed_image = self.__preprocess_image(face_image, model_hw)
+        preprocessed_image = self.preprocess_image(face_image, model_hw)
         
         output = np.array([v.squeeze().item() for v in self._head_pose_estimation_model(preprocessed_image).values()])
         
@@ -167,8 +168,8 @@ class GazeEstimator:
         
         model_hw = self._gaze_vector_estimation_model.input(0).shape[2:4]
         
-        preprocessed_left  = self.__preprocess_image(left_eye, model_hw)
-        preprocessed_right = self.__preprocess_image(right_eye, model_hw)
+        preprocessed_left  = self.preprocess_image(left_eye, model_hw)
+        preprocessed_right = self.preprocess_image(right_eye, model_hw)
         
         output = self._gaze_vector_estimation_model((preprocessed_left, preprocessed_right, angles))
         output = output[self._gaze_vector_estimation_model.output(0)].squeeze()

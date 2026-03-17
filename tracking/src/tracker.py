@@ -18,8 +18,8 @@ class Tracker:
         self.gaze_estimator = GazeEstimator(precision_mode, threshold)
         self.gaze_mapper    = GazeMapper()
     
-    
-    def __draw_landmarks(self, face_image: np.ndarray, points: List) -> np.ndarray:
+    @staticmethod
+    def draw_landmarks(self, face_image: np.ndarray, points: List) -> np.ndarray:
         for p in points:
             cv2.circle(face_image, p, 2, (255, 0, 0), 2)
         return face_image
@@ -38,7 +38,7 @@ class Tracker:
                 cv2.rectangle(res, (x1 + x_offset, y1 + y_offset), (x2 + x_offset, y2 + y_offset), (255, 0, 0), 2)
                 x1, y1, x2, y2 = right_bbox
                 cv2.rectangle(res, (x1 + x_offset, y1 + y_offset), (x2 + x_offset, y2 + y_offset), (255, 0, 0), 2)
-                self.__draw_landmarks(res, [(left_pupil[0] + x_offset, left_pupil[1] + y_offset),
+                self.draw_landmarks(res, [(left_pupil[0] + x_offset, left_pupil[1] + y_offset),
                                             (right_pupil[0] + x_offset, right_pupil[1] + y_offset)])
 
             l = 25 # temporal for test only
@@ -63,8 +63,7 @@ class Tracker:
         frame_width = int(cam.get(cv2.CAP_PROP_FRAME_WIDTH))
         frame_height = int(cam.get(cv2.CAP_PROP_FRAME_HEIGHT))
         
-        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-        out = cv2.VideoWriter('output.mp4', fourcc, 20.0, (frame_width, frame_height))
+        out = cv2.VideoWriter('output.mp4', cv2.VideoWriter_fourcc(*'mp4v'), 20.0, (frame_width, frame_height))
         while True:
             ret, frame = cam.read()
             
