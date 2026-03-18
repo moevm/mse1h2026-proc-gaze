@@ -74,6 +74,7 @@ import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import UploadArea from '@/components/UploadArea.vue'
 import VideoPlayer from '@/components/VideoPlayer.vue'
+import { uploadApi } from "@/api";
 
 const router = useRouter()
 
@@ -299,14 +300,23 @@ const canSubmit = computed(() =>
     cameraVideoFile.value && screenVideoFile.value && isValidUuid.value
 )
 
-const submit = () => {
-  if (!canSubmit.value) return
-  //API запрос
-  goToMain()
-}
 
 const goToMain = () => {
   router.push({ name: 'MainView' })
+}
+
+const submit = async () => {
+  if (!canSubmit.value) return
+  try {
+    const response = await uploadApi.upload(
+        studentUuid.value,
+        cameraVideoFile.value,
+        screenVideoFile.value
+    )
+    goToMain()
+  } catch (error) {
+    console.error('Upload failed:', error)
+  }
 }
 </script>
 
