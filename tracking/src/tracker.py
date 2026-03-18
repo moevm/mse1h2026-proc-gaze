@@ -18,10 +18,10 @@ class Tracker:
         self.gaze_mapper    = GazeMapper()
     
     @staticmethod
-    def draw_landmarks(face_image: np.ndarray, points: List) -> np.ndarray:
+    def draw_points(image: np.ndarray, points: List) -> np.ndarray:
         for p in points:
-            cv2.circle(face_image, p, 2, (255, 0, 0), 2)
-        return face_image
+            cv2.circle(image, p, 2, (0, 0, 255), 2)
+        return image
     
     def process_camera_frame(self, frame: np.ndarray, draw_bbox: bool = False) -> np.ndarray:
         gaze_vecs, pupils, offsets, eye_bboxes = self.gaze_estimator.estimate(frame)
@@ -37,7 +37,7 @@ class Tracker:
                 cv2.rectangle(res, (x1 + x_offset, y1 + y_offset), (x2 + x_offset, y2 + y_offset), (255, 0, 0), 2)
                 x1, y1, x2, y2 = right_bbox
                 cv2.rectangle(res, (x1 + x_offset, y1 + y_offset), (x2 + x_offset, y2 + y_offset), (255, 0, 0), 2)
-                self.draw_landmarks(res, [(left_pupil[0] + x_offset, left_pupil[1] + y_offset), (right_pupil[0] + x_offset, right_pupil[1] + y_offset)])
+                self.draw_points(res, [(left_pupil[0] + x_offset, left_pupil[1] + y_offset), (right_pupil[0] + x_offset, right_pupil[1] + y_offset)])
 
             l = 25 # temporal for test only
             rx, ry = right_pupil
@@ -79,7 +79,17 @@ class Tracker:
         cv2.destroyAllWindows()
     
     def process_screen_frame(self, screen_frame: np.ndarray, camera_frame: np.ndarray) -> np.ndarray:
-        pass
+        vec, _, _, _ = self.gaze_estimator.estimate(camera_frame)
+        main_vec = vec[0]
+        
+        proj_p = self.gaze_mapper.project(main_vec)
+        
+        x, y, _ = proj_p
+        x = int(x)
+        y = int(y)
+        res = self.draw_points(screen_frame, [(x, y)])
+
+        return res
     
     def _resolve_path(self, relative_path: str) -> Path:
         """
@@ -119,11 +129,16 @@ class Tracker:
         out_dir = out_dir.resolve()
         out_dir.mkdir(parents=True, exist_ok=True)
         
-        writer = cv2.VideoWriter(f"{out_dir}/camera.mp4", cv2.VideoWriter_fourcc(*"mp4v"), 30.0, (camera_video._width, camera_video._height))
-        for frame in camera_video:
-            preprocessed_frame = self.process_camera_frame(frame, True)
-            writer.write(preprocessed_frame)
-        writer.release()
+        camera_writer = cv2.VideoWriter(f"{out_dir}/camera.mp4", cv2.VideoWriter_fourcc(*"mp4v"), 30.0, (camera_video._width, camera_video._height))
+        screen_writer = cv2.VideoWriter(f"{out_dir}/screen.mp4", cv2.VideoWriter_fourcc(*"mp4v"), 30.0, (screen_video._width, screen_video._height))
+        
+        for camera_frame, screen_frame in zip(camera_video, screen_video):
+            processed_camera_frame = self.process_camera_frame(camera_frame, True)
+            processed_screen_frame = self.process_screen_frame(screen_frame, camera_frame)
+            camera_writer.write(processed_camera_frame)
+            screen_writer.write(processed_screen_frame)
+        camera_writer.release()
+        screen_writer.release()
 
         info_path = out_dir / "video_info.json"
         info_path.write_text(json.dumps(camera_video.info, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -237,4 +252,7 @@ if __name__ == "__main__":
     tracker.gaze_mapper = torch.load("../models/other/mapper.pth", map_location=device, weights_only=False)
     
     
+    screen_video = Video("/home/berlet/screen.mp4")
+    cam_video = Video("/home/berlet/webcam.mp4")
+    tracker.process_video(screen_video, cam_video, Path("../preprocessed"))
     
