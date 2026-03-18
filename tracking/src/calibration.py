@@ -106,5 +106,5 @@ class Calibration(tk.Tk):
         writer.release()
 
 if __name__ == "__main__":
-    cal = Calibration()
+    cal = Calibration(duration=5)
     cal.mainloop()

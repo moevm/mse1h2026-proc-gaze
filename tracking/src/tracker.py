@@ -15,7 +15,7 @@ class Tracker:
     def __init__(self, precision_mode: int=0, threshold: float=0.5) -> None:        
         self._data_dir = Path(os.environ.get("DATA_DIR", "../preprocessed")).resolve()
         self.gaze_estimator = GazeEstimator(precision_mode, threshold)
-        self.gaze_mapper    = GazeMapper()
+        self.gaze_mapper: GazeMapper = GazeMapper()
     
     @staticmethod
     def draw_points(image: np.ndarray, points: List) -> np.ndarray:
@@ -61,7 +61,7 @@ class Tracker:
         frame_width = int(cam.get(cv2.CAP_PROP_FRAME_WIDTH))
         frame_height = int(cam.get(cv2.CAP_PROP_FRAME_HEIGHT))
         
-        out = cv2.VideoWriter('output.mp4', cv2.VideoWriter_fourcc(*'mp4v'), 20.0, (frame_width, frame_height))
+        out = cv2.VideoWriter('output.mp4', cv2.VideoWriter_fourcc(*'mp4v'), cam.get(cv2.CAP_PROP_FPS), (frame_width, frame_height))
         while True:
             ret, frame = cam.read()
             
@@ -82,14 +82,20 @@ class Tracker:
         vec, _, _, _ = self.gaze_estimator.estimate(camera_frame)
         main_vec = vec[0]
         
-        proj_p = self.gaze_mapper.project(main_vec)
+        proj_p = self.gaze_mapper.project(main_vec).cpu().numpy()
+        
+        print(f"DEBUG: proj_p raw = {proj_p}")
         
         x, y, _ = proj_p
-        x = int(x)
-        y = int(y)
-        res = self.draw_points(screen_frame, [(x, y)])
+        if not all(np.isnan(proj_p)):
+            x = int(x)
+            y = int(y)
+            res = self.draw_points(screen_frame, [(x, y)])
+            return res
+        else:
+            print("detected suspicious frame")
+            return screen_frame
 
-        return res
     
     def _resolve_path(self, relative_path: str) -> Path:
         """
@@ -129,7 +135,7 @@ class Tracker:
         out_dir = out_dir.resolve()
         out_dir.mkdir(parents=True, exist_ok=True)
         
-        camera_writer = cv2.VideoWriter(f"{out_dir}/camera.mp4", cv2.VideoWriter_fourcc(*"mp4v"), 30.0, (camera_video._width, camera_video._height))
+        camera_writer = cv2.VideoWriter(f"{out_dir}/camera.mp4", cv2.VideoWriter_fourcc(*"mp4v"), camera_video.fps, (camera_video._width, camera_video._height))
         screen_writer = cv2.VideoWriter(f"{out_dir}/screen.mp4", cv2.VideoWriter_fourcc(*"mp4v"), 30.0, (screen_video._width, screen_video._height))
         
         for camera_frame, screen_frame in zip(camera_video, screen_video):
@@ -250,9 +256,11 @@ class Tracker:
 if __name__ == "__main__":
     tracker = Tracker()
     tracker.gaze_mapper = torch.load("../models/other/mapper.pth", map_location=device, weights_only=False)
-    
+    tracker.gaze_mapper.eval()
+    print(tracker.gaze_mapper.translation_vec)
     
     screen_video = Video("/home/berlet/screen.mp4")
     cam_video = Video("/home/berlet/webcam.mp4")
-    tracker.process_video(screen_video, cam_video, Path("../preprocessed"))
+    with torch.no_grad():
+        tracker.process_video(screen_video, cam_video, Path("../preprocessed"))
     

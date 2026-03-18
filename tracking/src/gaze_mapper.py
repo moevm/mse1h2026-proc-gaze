@@ -10,6 +10,8 @@ from video import Video
 from torch.utils.data import random_split
 import os
 
+from gaze_estimator import GazeEstimator
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class GazeMapper(nn.Module):
@@ -20,21 +22,21 @@ class GazeMapper(nn.Module):
         self.rotation_mat = torch.tensor([[-1,  0, 0 ],
                                           [ 0, -1, 0 ],
                                           [ 0,  0, 1 ]], device=device, dtype=torch.float32)
-        self.translation_vec = nn.Parameter(torch.tensor([1.0, 1.0, 1.0], device=device, dtype=torch.float32))
+        self.translation_vec = nn.Parameter(torch.randn(3, device=device), requires_grad=True)
 
     def __calc_lambda(self, gaze_tensor: np.ndarray|torch.Tensor) -> np.float32:
         z_s = torch.tensor([0, 0, 1], device=device, dtype=torch.float32)
         z_g = self.rotation_mat @ z_s
             
-        t_g = self.rotation_mat @ self.translation_vec
+        t_g = -self.rotation_mat @ self.translation_vec
         l = (z_g @ t_g) / (z_g @ gaze_tensor)
         
-        return l.item()
+        return l
         
     def project(self, gaze_vec: np.ndarray) -> np.ndarray:
         gaze_tensor = torch.as_tensor(gaze_vec, dtype=torch.float32, device=device).squeeze()
         l = self.__calc_lambda(gaze_tensor)
-        
+
         return self.rotation_mat @ (l * gaze_tensor) + self.translation_vec
     
 class GazeDataset(Dataset):
@@ -91,7 +93,8 @@ def calibrate(n_epochs: int, model: GazeMapper, train_loader: DataLoader, val_lo
     return model
 
 if __name__ == "__main__":
-    tracker = GazeMapper()
+    mapper = GazeMapper()
+    gaze_estimator = GazeEstimator()
     
     vids = [Video(os.path.join("../calibration", p)) for p in os.listdir("../calibration") if not ".txt" in p]
     file = open("../calibration/points.txt", "r", encoding="utf-8")
@@ -101,7 +104,7 @@ if __name__ == "__main__":
     for v, p in zip(vids, points):
         vecs = []
         for frame in v:
-            gaze_vec, _, _, _ = tracker.gaze_estimator.estimate(frame)
+            gaze_vec, _, _, _ = gaze_estimator.estimate(frame)
             vecs.append((gaze_vec[0], p))
             
         data.extend(vecs)
@@ -110,13 +113,12 @@ if __name__ == "__main__":
     print(len(dataset))
     
     g = torch.Generator().manual_seed(0)
-    train, val = random_split(dataset, [0.8, 0.2], g)
+    train, val = random_split(dataset, [0.9, 0.1], g)
     
     train_loader = DataLoader(train, batch_size=1, shuffle=True, num_workers=2, pin_memory=True)
     val_loader = DataLoader(val, batch_size=1, shuffle=True, num_workers=2, pin_memory=True)
     
     epochs = 50
-    mapper = tracker.gaze_mapper
     mapper = calibrate(epochs, mapper, train_loader, val_loader)
     
     torch.save(mapper, "../models/other/mapper.pth")
