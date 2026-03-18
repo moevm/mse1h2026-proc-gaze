@@ -1,31 +1,29 @@
-from tracking.src.constants import *
-from src.gaze_estimator import *
-from src.gaze_mapper import *
+from constants import *
+from gaze_estimator import *
+from gaze_mapper import *
 
 import json
 import os
 from pathlib import Path
 from typing import Any, Optional
 
-from src.constants import JOB_STATUS_DONE, JOB_STATUS_FAILED, JOB_STATUS_IN_PROGRESS
-from src.video import Video
-
-from torch.utils.data import random_split
+from constants import JOB_STATUS_DONE, JOB_STATUS_FAILED, JOB_STATUS_IN_PROGRESS
+from video import Video
 
 
 class Tracker:
     def __init__(self, precision_mode: int=0, threshold: float=0.5) -> None:        
-        self._data_dir = Path(os.environ.get("DATA_DIR", "/data")).resolve()
+        self._data_dir = Path(os.environ.get("DATA_DIR", "../preprocessed")).resolve()
         self.gaze_estimator = GazeEstimator(precision_mode, threshold)
         self.gaze_mapper    = GazeMapper()
     
     @staticmethod
-    def draw_landmarks(self, face_image: np.ndarray, points: List) -> np.ndarray:
+    def draw_landmarks(face_image: np.ndarray, points: List) -> np.ndarray:
         for p in points:
             cv2.circle(face_image, p, 2, (255, 0, 0), 2)
         return face_image
     
-    def process_camera_frame(self, frame: np.ndarray, draw_bbox: bool = False) -> Tuple[np.ndarray, List[np.ndarray]]:
+    def process_camera_frame(self, frame: np.ndarray, draw_bbox: bool = False) -> np.ndarray:
         gaze_vecs, pupils, offsets, eye_bboxes = self.gaze_estimator.estimate(frame)
         
         res = np.copy(frame)
@@ -39,8 +37,7 @@ class Tracker:
                 cv2.rectangle(res, (x1 + x_offset, y1 + y_offset), (x2 + x_offset, y2 + y_offset), (255, 0, 0), 2)
                 x1, y1, x2, y2 = right_bbox
                 cv2.rectangle(res, (x1 + x_offset, y1 + y_offset), (x2 + x_offset, y2 + y_offset), (255, 0, 0), 2)
-                self.draw_landmarks(res, [(left_pupil[0] + x_offset, left_pupil[1] + y_offset),
-                                            (right_pupil[0] + x_offset, right_pupil[1] + y_offset)])
+                self.draw_landmarks(res, [(left_pupil[0] + x_offset, left_pupil[1] + y_offset), (right_pupil[0] + x_offset, right_pupil[1] + y_offset)])
 
             l = 25 # temporal for test only
             rx, ry = right_pupil
@@ -84,9 +81,6 @@ class Tracker:
     def process_screen_frame(self, screen_frame: np.ndarray, camera_frame: np.ndarray) -> np.ndarray:
         pass
     
-    def process_video(self, video) -> None:
-        pass
-    
     def _resolve_path(self, relative_path: str) -> Path:
         """
         Преобразует относительный путь внутри DATA_DIR в абсолютный путь.
@@ -108,7 +102,7 @@ class Tracker:
     def _to_relative_path(self, path: Path) -> str:
         return path.resolve().relative_to(self._data_dir).as_posix()
 
-    def process_video(self, video: Video, out_dir: Optional[Path] = None) -> dict[str, str]:
+    def process_video(self, screen_video: Video, camera_video: Video, out_dir: Optional[Path] = None) -> dict[str, str]:
         """
         Обрабатывает одно видео и сохраняет результаты в out_dir.
 
@@ -124,9 +118,15 @@ class Tracker:
 
         out_dir = out_dir.resolve()
         out_dir.mkdir(parents=True, exist_ok=True)
+        
+        writer = cv2.VideoWriter(f"{out_dir}/camera.mp4", cv2.VideoWriter_fourcc(*"mp4v"), 30.0, (camera_video._width, camera_video._height))
+        for frame in camera_video:
+            preprocessed_frame = self.process_camera_frame(frame, True)
+            writer.write(preprocessed_frame)
+        writer.release()
 
         info_path = out_dir / "video_info.json"
-        info_path.write_text(json.dumps(video.info, ensure_ascii=False, indent=2), encoding="utf-8")
+        info_path.write_text(json.dumps(camera_video.info, ensure_ascii=False, indent=2), encoding="utf-8")
 
         traj_path = out_dir / "trajectory.json"
         if not traj_path.exists():
@@ -233,17 +233,8 @@ class Tracker:
             raise
 
 if __name__ == "__main__":
-    tracker= Tracker()
+    tracker = Tracker()
+    tracker.gaze_mapper = torch.load("../models/other/mapper.pth", map_location=device, weights_only=False)
     
-    dataset = GazeDataset()
     
-    g = torch.Generator(device=device).manual_seed(0)
-    train, val = random_split(dataset, [0.8, 0.2], g)
-    
-    train_loader = DataLoader(train, batch_size=8, shuffle=True, num_workers=2, pin_memory=True)
-    val_loader = DataLoader(val, batch_size=8, shuffle=True, num_workers=2, pin_memory=True)
-    
-    epochs = 20
-    mapper = tracker.gaze_mapper
-    calibrate(epochs, mapper, train_loader, val_loader)
     

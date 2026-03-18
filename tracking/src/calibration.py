@@ -29,7 +29,7 @@ class Calibration(tk.Tk):
         with open("../calibration/points.txt", "w+", encoding="utf-8") as f:
             for p in self.points:
                 x, y = p
-                f.write(f"{x} {y}\n")
+                f.write(f"{x} {y} {0.0}\n")
     
     def gen_points(self, n_points: int) -> List:
         res = []

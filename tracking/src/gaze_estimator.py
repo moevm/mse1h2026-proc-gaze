@@ -4,7 +4,7 @@ import cv2
 import os
 
 from typing import List, Tuple
-from tracking.src.constants import *
+from constants import *
 
 core = ov.Core()
 

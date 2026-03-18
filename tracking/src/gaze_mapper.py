@@ -5,6 +5,10 @@ import torch
 from tqdm import tqdm
 from torch.utils.data import DataLoader, Dataset
 from typing import List, Tuple
+from video import Video
+
+from torch.utils.data import random_split
+import os
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -28,36 +32,37 @@ class GazeMapper(nn.Module):
         return l.item()
         
     def project(self, gaze_vec: np.ndarray) -> np.ndarray:
-        gaze_tensor = torch.tensor(gaze_vec, dtype=torch.float32, device=device)
+        gaze_tensor = torch.as_tensor(gaze_vec, dtype=torch.float32, device=device).squeeze()
         l = self.__calc_lambda(gaze_tensor)
-        print(l)
         
         return self.rotation_mat @ (l * gaze_tensor) + self.translation_vec
     
 class GazeDataset(Dataset):
-    def __init__(self, gaze_vectors: List[np.ndarray], real_points: List[np.ndarray]):
+    def __init__(self, data: List[Tuple[np.ndarray, np.ndarray]]):
         super().__init__()
         
-        self.gaze_vecs: List[np.ndarray] = gaze_vectors
-        self.points:    List[np.ndarray] = real_points
+        self.data: List[Tuple[np.ndarray, np.ndarray]] = data
         
     def __getitem__(self, index: int) -> Tuple[np.ndarray, np.ndarray]: 
-        return self.gaze_vecs[index], self.points[index]
+        return self.data[index]
 
     def __len__(self) -> int:
-        return len(self.gaze_vecs)
+        return len(self.data)
         
 def calibrate(n_epochs: int, model: GazeMapper, train_loader: DataLoader, val_loader: DataLoader, verbose: bool=True) -> GazeMapper:
     model = model.to(device)
     
     criterion = nn.MSELoss()
-    optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3, weight_decay=1e-4)
+    optimizer = torch.optim.SGD(model.parameters(), lr=1e-3)
     
     for epoch in range(1, n_epochs+1):
         train_bar = tqdm(train_loader, f"Training {epoch}/{n_epochs}")
         model.train()
         train_total = 0.0
         for i, (gaze, point) in enumerate(train_bar, 1):
+            gaze = gaze.float().to(device)
+            point = point.float().to(device).squeeze() 
+            
             proj_point = model.project(gaze)
             
             optimizer.zero_grad()
@@ -66,17 +71,52 @@ def calibrate(n_epochs: int, model: GazeMapper, train_loader: DataLoader, val_lo
             loss.backward()
             optimizer.step()
 
-            train_bar.set_postfix_str(f"train_loss: {train_total/i}")
+            train_bar.set_postfix_str(f"train_loss: {train_total/i:.4f}")
             
         val_bar = tqdm(val_loader, f"Validation {epoch}/{n_epochs}")
         model.eval()
         with torch.no_grad():
             val_total = 0.0
-            for i, gaze, point in enumerate(val_bar, 1):
+            for i, (gaze, point) in enumerate(val_bar, 1):
+                gaze = gaze.float().to(device)
+                point = point.float().to(device).squeeze() 
+                
                 proj_point = model.project(gaze)
                 loss = criterion(proj_point, point)
                 val_total += loss.item()
 
-                val_bar.set_postfix_str(f"val_loss: {val_total/i}")
+                val_bar.set_postfix_str(f"val_loss: {val_total/i:.4f}")
         print()
         
+    return model
+
+if __name__ == "__main__":
+    tracker = GazeMapper()
+    
+    vids = [Video(os.path.join("../calibration", p)) for p in os.listdir("../calibration") if not ".txt" in p]
+    file = open("../calibration/points.txt", "r", encoding="utf-8")
+    points = [np.array(list(map(float, l.split()))) for l in file.readlines()]
+    
+    data = []
+    for v, p in zip(vids, points):
+        vecs = []
+        for frame in v:
+            gaze_vec, _, _, _ = tracker.gaze_estimator.estimate(frame)
+            vecs.append((gaze_vec[0], p))
+            
+        data.extend(vecs)
+    
+    dataset = GazeDataset(data)
+    print(len(dataset))
+    
+    g = torch.Generator().manual_seed(0)
+    train, val = random_split(dataset, [0.8, 0.2], g)
+    
+    train_loader = DataLoader(train, batch_size=1, shuffle=True, num_workers=2, pin_memory=True)
+    val_loader = DataLoader(val, batch_size=1, shuffle=True, num_workers=2, pin_memory=True)
+    
+    epochs = 50
+    mapper = tracker.gaze_mapper
+    mapper = calibrate(epochs, mapper, train_loader, val_loader)
+    
+    torch.save(mapper, "../models/other/mapper.pth")
