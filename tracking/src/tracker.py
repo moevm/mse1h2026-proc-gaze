@@ -10,6 +10,7 @@ from typing import Any, Optional
 from src.constants import JOB_STATUS_DONE, JOB_STATUS_FAILED, JOB_STATUS_IN_PROGRESS
 from src.video import Video
 
+from torch.utils.data import random_split
 
 
 class Tracker:
@@ -230,3 +231,19 @@ class Tracker:
                 encoding="utf-8",
             )
             raise
+
+if __name__ == "__main__":
+    tracker= Tracker()
+    
+    dataset = GazeDataset()
+    
+    g = torch.Generator(device=device).manual_seed(0)
+    train, val = random_split(dataset, [0.8, 0.2], g)
+    
+    train_loader = DataLoader(train, batch_size=8, shuffle=True, num_workers=2, pin_memory=True)
+    val_loader = DataLoader(val, batch_size=8, shuffle=True, num_workers=2, pin_memory=True)
+    
+    epochs = 20
+    mapper = tracker.gaze_mapper
+    calibrate(epochs, mapper, train_loader, val_loader)
+    
