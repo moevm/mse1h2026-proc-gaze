@@ -1,31 +1,42 @@
 import uuid
-from typing import Optional
+from datetime import time as time_type
+from typing import List
 
-from pydantic import BaseModel, computed_field
-from datetime import time
+from pydantic import BaseModel, Field
+
 
 class SuspiciousRead(BaseModel):
-    sus_id: uuid.UUID
-    recording_id: uuid.UUID
-    time: time
-    duration: float
-    description: str
+    sus_id: uuid.UUID = Field(...)
+    recording_id: uuid.UUID = Field(...)
+    time: time_type = Field(...)
+    duration: float = Field(...)
+    description: str = Field(...)
 
     class Config:
         from_attributes = True
         json_encoders = {
             uuid.UUID: str,
-            time: lambda v: v.isoformat() if v else None
+            time_type: lambda v: v.isoformat() if v else None
         }
 
-    @computed_field
-    @property
-    def end_time(self) -> Optional[str]:
-        if self.time and self.duration:
-            return f"{self.time.isoformat()} + {self.duration}s"
-        return None
 
-    @computed_field
-    @property
-    def summary(self) -> str:
-        return f"Suspicious interval at {self.time} lasting {self.duration}s"
+
+class SuspiciousInterval(BaseModel):
+    time: time_type = Field(...)
+    duration: float = Field(...)
+    description: str = Field(...)
+
+    class Config:
+        from_attributes = True
+        json_encoders = {
+            time_type: lambda v: v.isoformat() if v else None
+        }
+
+class SuspiciousResult(BaseModel):
+    recording_id: uuid.UUID = Field(...)
+    intervals: List[SuspiciousInterval] = Field(...)
+    class Config:
+        from_attributes = True
+        json_encoders = {
+            uuid.UUID: str
+        }

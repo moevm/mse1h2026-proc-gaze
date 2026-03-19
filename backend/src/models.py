@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime, timezone
 from enum import Enum as PyEnum
 
-from sqlalchemy import Column, String, DateTime, Float, ForeignKey, Enum, Time
+from sqlalchemy import Column, String, DateTime, Float, ForeignKey, Enum, Time, Boolean
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -23,7 +23,9 @@ class Student(Base):
     __tablename__ = "student"
 
     student_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    
+    first_name = Column(String(255), nullable=False)
+    last_name = Column(String(255), nullable=False)
+    patronymic = Column(String(255), nullable=False)
     recordings = relationship("Recording", back_populates="student")
 
     def __repr__(self):
@@ -106,7 +108,6 @@ class Notification(Base):
     type         = Column(Enum(NotificationType), nullable=False)
 
     recording = relationship("Recording", back_populates="notifications")
-
     def __repr__(self):
         return f"<Notification(notification_id={self.notification_id})>"
     

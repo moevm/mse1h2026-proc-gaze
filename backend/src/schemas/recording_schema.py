@@ -15,6 +15,8 @@ class RecordingRead(BaseModel):
     recording_id: uuid.UUID = Field(...)
     student_id: uuid.UUID = Field(...)
     created_at: datetime = Field(...)
+    path_webcam: str = Field(...)
+    path_screen: str = Field(...)
     status: RecordingStatus = Field(...)
     suspicion_level: float = Field(...)
 
