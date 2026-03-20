@@ -2,7 +2,7 @@ import logging
 import uuid
 from datetime import datetime
 
-from fastapi import UploadFile, Path
+from fastapi import UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
@@ -12,6 +12,7 @@ from src.schemas.recording_schema import RecordingRead
 from src.models import Recording
 from src.util.connection import connection
 from src.util import file_storage
+from pathlib import Path
 
 
 @connection
@@ -28,7 +29,7 @@ async def delete_recording(id: str, session: AsyncSession):
     except ValueError:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail="Invalid recording_id format. Expected UUID.")
-    recording = session.execute(select(Recording).where(Recording.recording_id == recording_uuid))
+    recording = (await session.execute(select(Recording).where(Recording.recording_id == recording_uuid))).scalar_one_or_none()
     if not recording:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Recording not found")
     await session.delete(recording)
@@ -73,12 +74,12 @@ async def create_recording(student_id: str,
     try:
         student_uuid = uuid.UUID(student_id)
     except ValueError:
-        return HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                              detail="Invalid student_id format. Expected UUID.")
     now = datetime.now()
     recording_uuid = uuid.uuid4()
-    webcam_path = f"/{now}/{recording_uuid}_webcam{Path(webcam.filename).suffix}"
-    screencast_path = f"/{now}/{recording_uuid}_screencast{Path(screencast.filename).suffix}"
+    webcam_path = f"{now}/{recording_uuid}_webcam{Path(webcam.filename).suffix}"
+    screencast_path = f"{now}/{recording_uuid}_screencast{Path(screencast.filename).suffix}"
     await file_storage.save_upload_file(webcam, webcam_path)
     await file_storage.save_upload_file(screencast, screencast_path)
     recording = Recording(

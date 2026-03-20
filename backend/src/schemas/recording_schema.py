@@ -1,24 +1,21 @@
-import uuid
 from datetime import datetime
-from enum import Enum
+from typing import Optional
+from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
-
-class RecordingStatus(Enum):
-    PENDING = "PENDING"
-    IN_PROGRESS = "IN_PROGRESS"
-    DONE = "DONE"
+from src.models import RecordingStatus
 
 
 class RecordingRead(BaseModel):
-    recording_id: uuid.UUID = Field(...)
-    student_id: uuid.UUID = Field(...)
-    created_at: datetime = Field(...)
-    path_webcam: str = Field(...)
-    path_screen: str = Field(...)
-    status: RecordingStatus = Field(...)
-    suspicion_level: float = Field(...)
+    recording_id: UUID
+    student_id: UUID
+    path_screen: str
+    path_webcam: str
+    path_processed: Optional[str] = None
+    created_date: datetime
+    status: RecordingStatus
+    processed_date: Optional[datetime] = None
+    suspicion_level: Optional[float] = None
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}

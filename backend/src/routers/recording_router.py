@@ -1,6 +1,6 @@
 from typing import List
 
-from fastapi import APIRouter, status, UploadFile, Form
+from fastapi import APIRouter, status, UploadFile, Form, File
 
 from src.schemas.process_request_schema import ProcessRequest
 from src.schemas.recording_schema import RecordingRead
@@ -14,8 +14,8 @@ router = APIRouter(prefix="/recording", tags=["recording"])
 @router.post("/upload", response_model=RecordingRead)
 async def handle_upload_files(
         student_id: str = Form(...),
-        webcam: UploadFile = None,
-        screencast: UploadFile = None
+        webcam: UploadFile = File(...),
+        screencast: UploadFile = File(...)
 ):
     recording = await recording_crud.create_recording(student_id, webcam, screencast)
     process_request = ProcessRequest.model_validate(recording)

@@ -18,7 +18,7 @@ def connection(method):
                 raise e
             except Exception as e:
                 logging.error(e)
-                session.rollback()
+                await session.rollback()
                 raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                                     detail=f"Internal server error: {str(e)}")
             finally:
