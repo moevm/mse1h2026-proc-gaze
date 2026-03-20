@@ -43,7 +43,14 @@
           Нет подозрительных моментов
         </div>
         <div v-else class="suspicious-list">
-          <!--log items -->
+          <SuspiciousItem
+              v-for="item in suspiciousList"
+              :key="item.sus_id"
+              :time="item.time"
+              :duration="item.duration"
+              :description="item.description"
+              @click="seekTo"
+          />
         </div>
       </div>
     </div>
@@ -54,6 +61,8 @@
 import { ref, onMounted, onBeforeUnmount } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import VideoPlayer from '@/components/VideoPlayer.vue';
+import SuspiciousItem from '@/components/result_view/SuspiciousItem.vue';
+import { recordingApi } from '@/api';
 
 const route = useRoute();
 const router = useRouter();
@@ -80,6 +89,7 @@ const suspiciousList = ref([]);
 
 const EPS = 0.1;
 
+
 onMounted(async () => {
   if (!recordingId) {
     goToMain();
@@ -87,20 +97,31 @@ onMounted(async () => {
   }
 
   try {
-    // download with api
+    const [webcamBlob, screenBlob] = await Promise.all([
+      recordingApi.getWebcamVideo(recordingId),
+      recordingApi.getScreenVideo(recordingId),
+    ]);
+    webcamSrc.value = URL.createObjectURL(webcamBlob);
+    screenSrc.value = URL.createObjectURL(screenBlob);
+
+    const suspicious = await recordingApi.getSuspicious(recordingId);
+    suspiciousList.value = suspicious;
   } catch (error) {
     console.error('Ошибка загрузки данных:', error);
   }
 });
+
 
 onBeforeUnmount(() => {
   if (webcamSrc.value) URL.revokeObjectURL(webcamSrc.value);
   if (screenSrc.value) URL.revokeObjectURL(screenSrc.value);
 });
 
+
 const goToMain = () => {
   router.push({ name: 'MainView' });
 };
+
 
 const handleWebcamDuration = (dur) => { webcamDuration.value = dur; };
 const handleWebcamTimeUpdate = (time) => { webcamCurrentTime.value = time; };
@@ -124,6 +145,7 @@ const handleWebcamSeek = (time) => {
   }
 };
 
+
 const handleScreenSeek = (time) => {
   if (screenProgrammaticSeek.value) {
     screenProgrammaticSeek.value = false;
@@ -140,6 +162,7 @@ const handleScreenSeek = (time) => {
     }
   }
 };
+
 
 const onPlay = (source) => {
   if (isSyncing.value) return;
@@ -175,6 +198,7 @@ const onPlay = (source) => {
   }
 };
 
+
 const onPause = (source) => {
   if (isSyncing.value) return;
 
@@ -194,6 +218,7 @@ const onPause = (source) => {
     }
   }
 };
+
 
 const seekTo = (time) => {
   if (webcamPlayer.value && webcamDuration.value !== null) {
