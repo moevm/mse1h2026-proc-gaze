@@ -19,9 +19,14 @@ jobs:
 
     - name: Start Docker Compose services with environment
       run: |
-        export POSTGRES_DB=postgres_db
-        export POSTGRES_USER=postgres_user
+        export POSTGRES_DB=gaze_db
+        export POSTGRES_USER=gaze_user
         export POSTGRES_PASSWORD=password
+        export DATA_DIR=/data
+        export DATABASE_URL=postgresql+asyncpg://gaze_user:password@db:5432/gaze_db
+        export AMQP_URL=amqp://guest:guest@rabbitmq:5672/
+        export AMQP_QUEUE=tracking.jobs
+        export AMQP_RESULT_QUEUE=tracking.results
         docker compose up -d
         echo "Waiting for services to start..."
         sleep 30
