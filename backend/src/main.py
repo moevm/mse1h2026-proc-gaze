@@ -1,21 +1,38 @@
-from fastapi import FastAPI, UploadFile
-from fastapi.responses import JSONResponse
-from fastapi import status
+import logging
+from contextlib import asynccontextmanager
 
-app = FastAPI()
+from fastapi import FastAPI
 
-@app.post("/upload")
-async def handle_upload_files(webcam: UploadFile = None, screencast: UploadFile = None):
-    if webcam is None or screencast is None:
-        return JSONResponse(
-            content={"error": "Expected 'webcam' and 'screencast' files."},
-            status_code=status.HTTP_400_BAD_REQUEST
-        )
-    
-    print("webcam type:", webcam.content_type)
-    print("screencast type:", screencast.content_type)
+from src.routers import recording_router, notification_router, suspicious_router, student_router
+from src.util.broker import broker
+from src.util.config import RMQ_URL
+from src.util.database import engine, Base
 
-    return JSONResponse(
-        content={'id': 12345},
-        status_code=status.HTTP_200_OK
-    )
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    async with engine.begin() as conn:
+        logging.info(f"Creating DB {app}")
+        await conn.run_sync(Base.metadata.create_all)
+    await broker.start()
+    logging.info(f"RabbitMQ broker started at url: {RMQ_URL}")
+    yield
+    await broker.close()
+    logging.info("RabbitMQ broker stopped")
+    await engine.dispose()
+    logging.info("Connection to DB closed")
+
+
+app = FastAPI(
+    lifespan=lifespan
+)
+
+app.include_router(recording_router.router)
+app.include_router(notification_router.router)
+app.include_router(suspicious_router.router)
+app.include_router(student_router.router)
+
+
+@app.get("/")
+async def root():
+    return {"message": "API started"}
