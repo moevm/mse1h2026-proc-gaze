@@ -10,10 +10,10 @@ from aio_pika.abc import AbstractRobustConnection, AbstractRobustChannel
 
 logger = logging.getLogger(__name__)
 
-AMQP_URL = os.environ.get("AMQP_URL", "amqp://guest:guest@rabbitmq:5672/")
-AMQP_QUEUE = os.environ.get("AMQP_QUEUE", "tracking.jobs")
-AMQP_RESULT_QUEUE = os.environ.get("AMQP_RESULT_QUEUE", "tracking.results")
-DATA_DIR = Path(os.environ.get("DATA_DIR", "/data"))
+AMQP_URL = os.environ["AMQP_URL"]
+AMQP_QUEUE = os.environ["AMQP_QUEUE"]
+AMQP_RESULT_QUEUE = os.environ["AMQP_RESULT_QUEUE"]
+DATA_DIR = Path(os.environ["DATA_DIR"])
 
 _connection: AbstractRobustConnection | None = None
 _channel: AbstractRobustChannel | None = None
