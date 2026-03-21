@@ -1,0 +1,31 @@
+name: Docker Compose Test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-docker-compose:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Compose
+      uses: docker/setup-compose-action@v2
+
+    - name: Start Docker Compose services with environment
+      run: |
+        export POSTGRES_DB=postgres_db
+        export POSTGRES_USER=postgres_user
+        export POSTGRES_PASSWORD=password
+        docker compose up -d
+        echo "Waiting for services to start..."
+        sleep 30
+
+    - name: Check container status
+      run: |
+        bash ci/check-containers.sh
