@@ -5,8 +5,9 @@ from enum import Enum as PyEnum
 from sqlalchemy import Column, String, DateTime, Float, ForeignKey, Enum, Time, Boolean, TIMESTAMP
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
+from sqlalchemy.ext.declarative import declarative_base
 
-from src.util.database import Base
+Base = declarative_base()
 
 
 class RecordingStatus(PyEnum):
@@ -26,6 +27,7 @@ class Student(Base):
     first_name = Column(String(255), nullable=False)
     last_name = Column(String(255), nullable=False)
     patronymic = Column(String(255), nullable=False)
+    group = Column(String(255), nullable=False)
     recordings = relationship("Recording", back_populates="student")
 
     def __repr__(self):
@@ -46,7 +48,7 @@ class Recording(Base):
     path_screen     = Column(String(255), nullable=False)
     path_webcam     = Column(String(255), nullable=False)
     path_processed  = Column(String(255), nullable=True)
-    created_date    = Column(TIMESTAMP(timezone=True), default=lambda: datetime.now(timezone.utc).replace(tzinfo=None), nullable=False)
+    created_date    = Column(TIMESTAMP(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
     status          = Column(Enum(RecordingStatus), default=RecordingStatus.PENDING, nullable=False)
     processed_date  = Column(TIMESTAMP(timezone=True), nullable=True)
     suspicion_level = Column(Float, nullable=True)
@@ -103,8 +105,8 @@ class Notification(Base):
     notification_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     recording_id    = Column(UUID(as_uuid=True), ForeignKey("recording.recording_id", ondelete="CASCADE"), nullable=False)
     
-    created_date = Column(TIMESTAMP(timezone=True), default=lambda: datetime.now(timezone.utc).replace(tzinfo=None), nullable=False)
-    sent_date    = Column(DateTime, nullable=True)
+    created_date = Column(TIMESTAMP(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    sent_date    = Column(TIMESTAMP(timezone=True), default=None, nullable=True)
     type         = Column(Enum(NotificationType), nullable=False)
 
     recording = relationship("Recording", back_populates="notifications")

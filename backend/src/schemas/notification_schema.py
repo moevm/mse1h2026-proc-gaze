@@ -4,10 +4,7 @@ from enum import Enum
 from typing import Optional
 
 from pydantic import BaseModel
-
-
-class NotificationType(Enum):
-    DONE = "DONE"
+from src.models import NotificationType
 
 
 class NotificationRead(BaseModel):
@@ -28,3 +25,9 @@ class NotificationCreate(BaseModel):
     recording_id: uuid.UUID
     created_date: datetime
     type: NotificationType
+
+    class Config:
+        json_encoders = {
+            uuid.UUID: str,
+            datetime: lambda v: v.isoformat() if v else None
+        }

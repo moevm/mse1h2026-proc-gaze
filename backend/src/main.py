@@ -6,7 +6,8 @@ from fastapi import FastAPI
 from src.routers import recording_router, notification_router, suspicious_router, student_router
 from src.util.broker import broker
 from src.util.config import RMQ_URL
-from src.util.database import engine, Base
+from src.util.database import engine
+from src.models import Base
 
 
 @asynccontextmanager
