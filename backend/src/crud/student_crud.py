@@ -31,8 +31,16 @@ async def get_students(session: AsyncSession) -> List[StudentRead]:
 
 
 @connection
-async def create_student(session: AsyncSession) -> StudentRead:
+async def create_student(first_name: str,
+                         last_name: str,
+                         patronymic: str,
+                         group: str,
+                         session: AsyncSession) -> StudentRead:
     student = Student()
+    student.first_name = first_name
+    student.last_name = last_name
+    student.patronymic = patronymic
+    student.group = group
     session.add(student)
     await session.commit()
     await session.refresh(student)

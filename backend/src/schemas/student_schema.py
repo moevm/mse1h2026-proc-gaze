@@ -9,3 +9,5 @@ class StudentRead(BaseModel):
     last_name: str = Field(...)
     patronymic: str = Field(...)
     group: str = Field(...)
+
+    model_config = {"from_attributes": True}
