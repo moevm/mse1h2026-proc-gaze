@@ -142,91 +142,48 @@ class Tracker:
 
         Ожидаемый формат payload:
             {
-                "job_id": "123",
-                "inputs": {
-                    "screen_video": "uploads/screen.mp4",
-                    "webcam_video": "uploads/webcam.mp4"
-                }
+                "recording_id": "uuid",
+                "path_webcam": "path/to/webcam.mp4",
+                "path_screen": "path/to/screen.mp4"
             }
-
-        Перед началом обработки в results/<job_id>/status.json записывается
-        промежуточный статус IN_PROGRESS. После успешного завершения статус
-        обновляется на DONE, а при ошибке — на FAILED.
 
         Формат результата:
             {
-                "job_id": "123",
-                "status": "DONE",
-                "outputs": {
-                    "screen_video": {
-                        "video_info": "results/123/screen_video/video_info.json",
-                        "trajectory": "results/123/screen_video/trajectory.json"
-                    },
-                    "webcam_video": {
-                        "video_info": "results/123/webcam_video/video_info.json",
-                        "trajectory": "results/123/webcam_video/trajectory.json"
+                "recording_id": "uuid",
+                "intervals": [
+                    {
+                        "time": "00:00:05",
+                        "duration": 3.5,
+                        "description": "описание"
                     }
-                }
+                ]
             }
         """
-        job_id = str(payload["job_id"])
-        inputs = payload.get("inputs") or {}
+        recording_id = str(payload["recording_id"])
 
-        screen_video_path = inputs.get("screen_video")
-        webcam_video_path = inputs.get("webcam_video")
+        screen_video_path = payload.get("path_screen")
+        webcam_video_path = payload.get("path_webcam")
 
         if not screen_video_path or not webcam_video_path:
-            raise KeyError("payload.inputs must contain both 'screen_video' and 'webcam_video'")
+            raise KeyError("payload must contain both 'path_screen' and 'path_webcam'")
 
-        out_dir = (self._data_dir / "results" / job_id).resolve()
+        out_dir = (self._data_dir / "results" / recording_id).resolve()
         out_dir.relative_to(self._data_dir)
         out_dir.mkdir(parents=True, exist_ok=True)
 
-        status_path = out_dir / "status.json"
-        status_path.write_text(
-            json.dumps(
-                {
-                    "job_id": job_id,
-                    "status": JOB_STATUS_IN_PROGRESS,
-                },
-                ensure_ascii=False,
-                indent=2,
-            ),
-            encoding="utf-8",
-        )
+        for input_name, input_path in {
+            "screen_video": screen_video_path,
+            "webcam_video": webcam_video_path,
+        }.items():
+            video_path = self._resolve_path(str(input_path))
+            source_out_dir = out_dir / input_name
 
-        outputs: dict[str, Any] = {}
+            with Video(video_path) as v:
+                self.process_video(v, out_dir=source_out_dir)
 
-        try:
-            for input_name, input_path in {
-                "screen_video": screen_video_path,
-                "webcam_video": webcam_video_path,
-            }.items():
-                video_path = self._resolve_path(str(input_path))
-                source_out_dir = out_dir / input_name
+        intervals: list[dict[str, Any]] = []
 
-                with Video(video_path) as v:
-                    outputs[input_name] = self.process_video(v, out_dir=source_out_dir)
-
-            result = {"job_id": job_id, "status": JOB_STATUS_DONE, "outputs": outputs}
-
-            status_path.write_text(
-                json.dumps(result, ensure_ascii=False, indent=2),
-                encoding="utf-8",
-            )
-
-            return result
-
-        except Exception:
-            status_path.write_text(
-                json.dumps(
-                    {
-                        "job_id": job_id,
-                        "status": JOB_STATUS_FAILED,
-                    },
-                    ensure_ascii=False,
-                    indent=2,
-                ),
-                encoding="utf-8",
-            )
-            raise
+        return {
+            "recording_id": recording_id,
+            "intervals": intervals,
+        }
