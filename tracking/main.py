@@ -48,5 +48,17 @@ async def handle_job(message: dict[str, Any]):
     await broker.publish(result, queue=results_queue)
 
 
+async def main():
+    while True:
+        try:
+            await broker.start()
+            logger.info(f"RabbitMQ broker started at url: {AMQP_URL}")
+            break
+        except Exception as e:
+            logger.warning(f"RabbitMQ not ready: {e}. Retry in 2s...")
+            await asyncio.sleep(2)
+    await app.run()
+
+
 if __name__ == "__main__":
-    asyncio.run(app.run())
+    asyncio.run(main())
