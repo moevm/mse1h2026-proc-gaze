@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime, timezone
 from enum import Enum as PyEnum
 
-from sqlalchemy import Column, String, DateTime, Float, ForeignKey, Enum, Time, Boolean, TIMESTAMP
+from sqlalchemy import Column, String, DateTime, Float, ForeignKey, Enum, Time, TIMESTAMP
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 

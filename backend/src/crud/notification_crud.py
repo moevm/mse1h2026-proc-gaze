@@ -14,7 +14,7 @@ from src.util.connection import connection
 
 @connection
 async def get_notifications(session: AsyncSession):
-    notifications = await session.execute(select(Notification).where(Notification.sent_date == None))
+    notifications = await session.execute(select(Notification).where(Notification.sent_date is None))
     notifications = notifications.scalars().all()
     for notification in notifications:
         notification.sent_date = datetime.now(timezone.utc)

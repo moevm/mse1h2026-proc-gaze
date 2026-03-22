@@ -4,7 +4,7 @@ import cv2
 import os
 
 from typing import List, Tuple
-from tracking.src.constants import *
+from tracking.src.constants import PRECISIONS, MODELS, PTH2MODELS, LEFT_EYE_INDICES, RIGHT_EYE_INDICES, EYE_INDICES
 
 core = ov.Core()
 
@@ -174,8 +174,8 @@ class GazeEstimator:
         output = self._gaze_vector_estimation_model((preprocessed_left, preprocessed_right, angles))
         output = output[self._gaze_vector_estimation_model.output(0)].squeeze()
 
-        l = np.linalg.norm(output)
-        output /= l if l != 0 else 1
+        len = np.linalg.norm(output)
+        output /= len if len != 0 else 1
         
         return output
 

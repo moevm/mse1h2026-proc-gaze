@@ -1,6 +1,7 @@
-from tracking.src.constants import *
-from src.gaze_estimator import *
-from src.gaze_mapper import *
+from src.gaze_estimator import GazeEstimator
+from src.gaze_mapper import GazeMapper
+import numpy as np
+import cv2
 
 import json
 import os
@@ -19,12 +20,12 @@ class Tracker:
         self.gaze_mapper    = GazeMapper()
     
     @staticmethod
-    def draw_landmarks(self, face_image: np.ndarray, points: List) -> np.ndarray:
+    def draw_landmarks(self, face_image: np.ndarray, points: list) -> np.ndarray:
         for p in points:
             cv2.circle(face_image, p, 2, (255, 0, 0), 2)
         return face_image
     
-    def process_camera_frame(self, frame: np.ndarray, draw_bbox: bool = False) -> Tuple[np.ndarray, List[np.ndarray]]:
+    def process_camera_frame(self, frame: np.ndarray, draw_bbox: bool = False) -> tuple[np.ndarray, list[np.ndarray]]:
         gaze_vecs, pupils, offsets, eye_bboxes = self.gaze_estimator.estimate(frame)
         
         res = np.copy(frame)
@@ -41,7 +42,9 @@ class Tracker:
                 self.draw_landmarks(res, [(left_pupil[0] + x_offset, left_pupil[1] + y_offset),
                                             (right_pupil[0] + x_offset, right_pupil[1] + y_offset)])
 
-            l = 25 # temporal for test only
+            # temporal for test only
+            l = 25 # noqa
+
             rx, ry = right_pupil
             lx, ly = left_pupil
             
@@ -81,9 +84,6 @@ class Tracker:
         cv2.destroyAllWindows()
     
     def process_screen_frame(self, screen_frame: np.ndarray, camera_frame: np.ndarray) -> np.ndarray:
-        pass
-    
-    def process_video(self, video) -> None:
         pass
     
     def _resolve_path(self, relative_path: str) -> Path:

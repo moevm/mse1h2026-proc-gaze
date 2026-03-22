@@ -1,0 +1,26 @@
+name: Ruff Check
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  ruff-check:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Ruff check backend
+      uses: astral-sh/ruff-action@v3
+      with:
+        args: check --target-version py312
+        src: "./backend"
+    
+    - name: Ruff check tracking
+      uses: astral-sh/ruff-action@v3
+      with:
+        args: check --target-version py311
+        src: "./tracking"
