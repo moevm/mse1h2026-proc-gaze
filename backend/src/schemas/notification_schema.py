@@ -1,13 +1,10 @@
 import uuid
 from datetime import datetime
-from enum import Enum
 from typing import Optional
 
 from pydantic import BaseModel
 
-
-class NotificationType(Enum):
-    DONE = "DONE"
+from src.models import NotificationType
 
 
 class NotificationRead(BaseModel):

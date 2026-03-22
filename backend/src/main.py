@@ -1,9 +1,11 @@
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
 from src.routers import recording_router, notification_router, suspicious_router, student_router
+from src.consumers import suspicious_consumer  # noqa: F401
 from src.util.broker import broker
 from src.util.config import RMQ_URL
 from src.util.database import engine, Base
@@ -14,8 +16,14 @@ async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         logging.info(f"Creating DB {app}")
         await conn.run_sync(Base.metadata.create_all)
-    await broker.start()
-    logging.info(f"RabbitMQ broker started at url: {RMQ_URL}")
+    while True:
+        try:
+            await broker.start()
+            logging.info(f"RabbitMQ broker started at url: {RMQ_URL}")
+            break
+        except Exception as e:
+            logging.warning(f"RabbitMQ not ready: {e}. Retry in 2s...")
+            await asyncio.sleep(2)
     yield
     await broker.close()
     logging.info("RabbitMQ broker stopped")
