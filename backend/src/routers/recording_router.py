@@ -2,11 +2,15 @@ from typing import List
 
 from fastapi import APIRouter, status, UploadFile, Form, File
 
+from faststream.rabbit import RabbitQueue
+
 from src.schemas.process_request_schema import ProcessRequest
 from src.schemas.recording_schema import RecordingRead
 from src.crud import recording_crud
 from src.util.broker import broker
 from src.util.config import AMQP_QUEUE
+
+jobs_queue = RabbitQueue(AMQP_QUEUE, durable=True)
 
 router = APIRouter(prefix="/recording", tags=["recording"])
 
@@ -19,7 +23,7 @@ async def handle_upload_files(
 ):
     recording = await recording_crud.create_recording(student_id, webcam, screencast)
     process_request = ProcessRequest.model_validate(recording)
-    await broker.publish(process_request, AMQP_QUEUE)
+    await broker.publish(process_request, jobs_queue)
     return recording
 
 

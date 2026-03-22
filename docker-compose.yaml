@@ -17,6 +17,7 @@ services:
 
   rabbitmq:
     image: rabbitmq:3.13-management
+    restart: always
     environment:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
@@ -49,6 +50,34 @@ services:
         condition: service_healthy
     ports:
       - "8000:8000"
+  tracker:
+    build:
+      context: ./tracking
+      dockerfile: Dockerfile
+    image: tracking-tracker:latest
+    environment:
+      DATA_DIR: ${DATA_DIR}
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      AMQP_URL: ${AMQP_URL}
+      AMQP_QUEUE: ${AMQP_QUEUE}
+      AMQP_RESULT_QUEUE: ${AMQP_RESULT_QUEUE}
+    volumes:
+      - shared_data:/data
+    depends_on:
+      db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  frontend:
+      build:
+        context: ./frontend
+        dockerfile: Dockerfile
+      image: tracking-frontend:latest
+      ports:
+        - "80:80"
+      depends_on:
+        - backend
 
 volumes:
   shared_data:
