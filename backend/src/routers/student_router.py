@@ -1,8 +1,8 @@
 from typing import List
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, status, Form
 
-from src.schemas.student_schema import StudentRead
+from src.schemas.student_schema import StudentCreate, StudentRead
 from src.crud import student_crud
 
 router = APIRouter(prefix="/students", tags=["student"])
@@ -21,6 +21,6 @@ async def get_students():
 
 
 @router.post("", response_model=StudentRead, status_code=status.HTTP_201_CREATED)
-async def create_student():
-    student = await student_crud.create_student()
+async def create_student(student_create: StudentCreate):
+    student = await student_crud.create_student(student_create)
     return student
