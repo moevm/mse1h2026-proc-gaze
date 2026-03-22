@@ -17,6 +17,7 @@ services:
 
   rabbitmq:
     image: rabbitmq:3.13-management
+    restart: always
     environment:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
