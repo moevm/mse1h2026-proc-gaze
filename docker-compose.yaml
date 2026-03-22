@@ -54,6 +54,8 @@ services:
     build:
       context: ./tracking
       dockerfile: Dockerfile
+      args:
+        MODELS_URL: ${MODELS_URL}
     image: tracking-tracker:latest
     environment:
       DATA_DIR: ${DATA_DIR}
