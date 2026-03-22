@@ -11,3 +11,9 @@ class StudentRead(BaseModel):
     group: str = Field(...)
 
     model_config = {"from_attributes": True}
+
+class StudentCreate(BaseModel):
+    first_name: str
+    last_name: str
+    patronymic: str
+    group: str

@@ -26,6 +26,7 @@ class Student(Base):
     first_name = Column(String(255), nullable=False)
     last_name = Column(String(255), nullable=False)
     patronymic = Column(String(255), nullable=False)
+    group = Column(String(255), nullable=False)
     recordings = relationship("Recording", back_populates="student")
 
     def __repr__(self):

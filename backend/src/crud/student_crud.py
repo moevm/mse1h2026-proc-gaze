@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 from starlette.exceptions import HTTPException
 
-from src.schemas.student_schema import StudentRead
+from src.schemas.student_schema import StudentRead, StudentCreate
 from src.models import Student
 from src.util.connection import connection
 
@@ -31,16 +31,13 @@ async def get_students(session: AsyncSession) -> List[StudentRead]:
 
 
 @connection
-async def create_student(first_name: str,
-                         last_name: str,
-                         patronymic: str,
-                         group: str,
-                         session: AsyncSession) -> StudentRead:
+async def create_student(student_create: StudentCreate, session: AsyncSession) -> StudentRead:
     student = Student()
-    student.first_name = first_name
-    student.last_name = last_name
-    student.patronymic = patronymic
-    student.group = group
+    student.first_name = student_create.first_name
+    student.last_name  = student_create.last_name
+    student.patronymic = student_create.patronymic
+    student.group      = student_create.group
+    
     session.add(student)
     await session.commit()
     await session.refresh(student)
