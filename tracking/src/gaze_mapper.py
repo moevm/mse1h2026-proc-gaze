@@ -30,10 +30,10 @@ class GazeMapper(nn.Module):
         
     def project(self, gaze_vec: np.ndarray) -> np.ndarray:
         gaze_tensor = torch.tensor(gaze_vec, dtype=torch.float32, device=device)
-        l = self.__calc_lambda(gaze_vec)
-        print(l)
+        lambda_ = self.__calc_lambda(gaze_vec)
+        print(lambda_)
         
-        return self.rotation_mat @ (l * gaze_tensor) + self.translation_vec
+        return self.rotation_mat @ (lambda_ * gaze_tensor) + self.translation_vec
     
     def calibrate(self) -> None:
         pass

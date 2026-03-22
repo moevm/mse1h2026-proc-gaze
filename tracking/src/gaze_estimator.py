@@ -4,7 +4,7 @@ import cv2
 import os
 
 from typing import List, Tuple
-from tracking.src.constants import PRECISIONS, MODELS, PTH2MODELS, LEFT_EYE_INDICES, RIGHT_EYE_INDICES
+from tracking.src.constants import PRECISIONS, MODELS, PTH2MODELS, LEFT_EYE_INDICES, RIGHT_EYE_INDICES, EYE_INDICES
 
 core = ov.Core()
 

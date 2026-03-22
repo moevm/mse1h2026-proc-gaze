@@ -1,4 +1,3 @@
-from tracking.src.constants import *
 from src.gaze_estimator import GazeEstimator
 from src.gaze_mapper import GazeMapper
 import numpy as np
