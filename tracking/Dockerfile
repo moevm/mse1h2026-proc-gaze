@@ -9,12 +9,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+COPY intel_cache/ intel_cache/
 RUN pip install --no-cache-dir openvino-dev[onnx] && \
-    omz_downloader --name face-detection-0200 -o /intel && \
-    omz_downloader --name landmarks-regression-retail-0009 -o /intel && \
-    omz_downloader --name facial-landmarks-98-detection-0001 -o /intel && \
-    omz_downloader --name head-pose-estimation-adas-0001 -o /intel && \
-    omz_downloader --name gaze-estimation-adas-0002 -o /intel
+    omz_downloader --cache_dir intel_cache --name face-detection-0200 -o /intel && \
+    omz_downloader --cache_dir intel_cache --name landmarks-regression-retail-0009 -o /intel && \
+    omz_downloader --cache_dir intel_cache --name facial-landmarks-98-detection-0001 -o /intel && \
+    omz_downloader --cache_dir intel_cache --name head-pose-estimation-adas-0001 -o /intel && \
+    omz_downloader --cache_dir intel_cache --name gaze-estimation-adas-0002 -o /intel
 
 COPY main.py .
 COPY src ./src

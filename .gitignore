@@ -1,6 +1,8 @@
 .vscode
 .idea
 intel
+tracking/intel_cache/*
+!tracking/intel_cache/README.md
 images
 .DS_Store
 # Byte-compiled / optimized / DLL files
