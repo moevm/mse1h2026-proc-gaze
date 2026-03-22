@@ -36,7 +36,7 @@ async def get_file(path: str) -> FileResponse:
             filename=file_path.name,
             media_type="application/octet-stream"
         )
-    except Exception as e:
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Error sending file"
