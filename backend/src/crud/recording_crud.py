@@ -20,7 +20,6 @@ async def get_recordings(session: AsyncSession):
     count_sub = (
         select(func.count(SuspiciousInterval.sus_id))
         .where(SuspiciousInterval.recording_id == Recording.recording_id)
-        .correlate(Recording)
         .scalar_subquery()
         .label("count_suspicions")
     )
