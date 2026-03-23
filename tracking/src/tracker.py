@@ -95,6 +95,16 @@ class Tracker:
             return screen_frame
 
     def _resolve_path(self, relative_path: str) -> Path:
+        """
+        Преобразует относительный путь внутри DATA_DIR в абсолютный путь.
+
+        Args:
+            relative_path: относительный путь к входному файлу из payload,
+                например ``videos/screen.mp4``.
+
+        Returns:
+            Абсолютный путь к файлу, расположенному внутри директории DATA_DIR.
+        """
         p = Path(str(relative_path))
         if p.is_absolute() or ".." in p.parts:
             raise ValueError(f"Invalid path: {relative_path}")
@@ -111,6 +121,18 @@ class Tracker:
             camera_video: Video,
             out_dir: Optional[Path] = None
         ) -> None:
+        """
+        Обрабатывает пару видео (экран + вебкамера) и сохраняет результаты в out_dir.
+
+        Args:
+            screen_video: объект Video для записи экрана.
+            camera_video: объект Video для потока с вебкамеры.
+            out_dir: директория для сохранения результатов.
+
+        Сохраняет:
+            - camera.mp4: обработанное видео с вебкамеры (bbox глаз, вектор взгляда).
+            - screen.mp4: обработанное видео экрана (точка проекции взгляда).
+        """
         if out_dir is None:
             return
 
@@ -142,6 +164,29 @@ class Tracker:
             screen_writer.release()
 
     def process_job(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Обрабатывает задание на трекинг из payload.
+
+        Ожидаемый формат payload:
+            {
+                "recording_id": "uuid",
+                "path_webcam": "path/to/webcam.mp4",
+                "path_screen": "path/to/screen.mp4"
+            }
+
+        Формат результата:
+            {
+                "recording_id": "uuid",
+                "intervals": [
+                    {
+                        "time": "00:00:05",
+                        "duration": 3,
+                        "description": "описание"
+                    }
+                ],
+                "path_processed": "results/uuid/camera.mp4"
+            }
+        """
         recording_id = str(payload["recording_id"])
 
         screen_video_path = os.path.join("/data", payload.get("path_screen"))
