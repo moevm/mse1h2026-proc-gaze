@@ -16,7 +16,7 @@ const router = createRouter({
             meta: { requiresAuth: true, requiresVerification: true }
         },
         {
-            path: '/result',
+            path: '/result/:recording_id',
             name: 'ResultView',
             component: () => import('@/views/ResultView.vue'),
             meta: { requiresAuth: true, requiresVerification: true }
