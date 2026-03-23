@@ -12,7 +12,8 @@ class RecordingRead(BaseModel):
     student_id: UUID
     path_screen: str
     path_webcam: str
-    path_processed: Optional[str] = None
+    path_processed_webcam: Optional[str] = None
+    path_processed_screen: Optional[str] = None
     created_date: datetime
     status: RecordingStatus
     processed_date: Optional[datetime] = None

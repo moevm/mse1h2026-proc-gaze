@@ -62,6 +62,20 @@ async def get_screen(id: str):
     return await file_storage.get_file(recording.path_screen)
 
 
+async def get_processed_webcam(id: str):
+    recording = await get_recording(id)
+    if not recording.path_processed_webcam:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Processed webcam video not ready yet")
+    return await file_storage.get_file(recording.path_processed_webcam)
+
+
+async def get_processed_screen(id: str):
+    recording = await get_recording(id)
+    if not recording.path_processed_screen:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Processed screen video not ready yet")
+    return await file_storage.get_file(recording.path_processed_screen)
+
+
 @connection
 async def create_recording(student_id: str,
                            webcam: UploadFile,
@@ -97,7 +111,8 @@ async def create_recording(student_id: str,
 @connection
 async def mark_recording_done(
     recording_id: uuid.UUID,
-    path_processed: Optional[str] = None,
+    path_processed_webcam: Optional[str] = None,
+    path_processed_screen: Optional[str] = None,
     session: AsyncSession = None,
 ):
     recording = (
@@ -109,6 +124,8 @@ async def mark_recording_done(
         return
     recording.status = RecordingStatus.DONE
     recording.processed_date = datetime.now(timezone.utc)
-    if path_processed:
-        recording.path_processed = path_processed
+    if path_processed_webcam:
+        recording.path_processed_webcam = path_processed_webcam
+    if path_processed_screen:
+        recording.path_processed_screen = path_processed_screen
     await session.commit()
