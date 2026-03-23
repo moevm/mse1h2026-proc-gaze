@@ -139,18 +139,17 @@ class Tracker:
         out_dir = out_dir.resolve()
         out_dir.mkdir(parents=True, exist_ok=True)
         
-        # Initialize video writers
         camera_writer = cv2.VideoWriter(
             str(out_dir / "camera.mp4"), 
             cv2.VideoWriter_fourcc(*"mp4v"), 
             camera_video.fps, 
-            (camera_video.width, camera_video.height)  # Assuming properties, not _width
+            (camera_video._width, camera_video._height)
         )
         screen_writer = cv2.VideoWriter(
-            str(out_dir / "screen.mp4"), 
-            cv2.VideoWriter_fourcc(*"mp4v"), 
+            str(out_dir / "screen.mp4"),
+            cv2.VideoWriter_fourcc(*"mp4v"),
             DEFAULT_SCREEN_FPS, 
-            (screen_video.width, screen_video.height)
+            (screen_video._width, screen_video._height)
         )
         
         try:
@@ -164,22 +163,6 @@ class Tracker:
             camera_writer.release()
             screen_writer.release()
 
-        # Save metadata
-        info_path = out_dir / "video_info.json"
-        info_path.write_text(
-            json.dumps(camera_video.info, ensure_ascii=False, indent=2), 
-            encoding="utf-8"
-        )
-
-        # Initialize trajectory file if not exists
-        traj_path = out_dir / "trajectory.json"
-        if not traj_path.exists():
-            traj_path.write_text("{}", encoding="utf-8")
-
-        return {
-            "video_info": self._to_relative_path(info_path),
-            "trajectory": self._to_relative_path(traj_path),
-        }
 
     def process_job(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -199,63 +182,35 @@ class Tracker:
         """
         recording_id = str(payload["recording_id"])
 
-        screen_video_path = payload.get("path_screen")
-        webcam_video_path = payload.get("path_webcam")
+        screen_video_path = os.path.join("/data", payload.get("path_screen"))
+        webcam_video_path = os.path.join("/data", payload.get("path_webcam"))
 
         if not screen_video_path or not webcam_video_path:
-            raise KeyError(
-                "payload.inputs must contain both 'screen_video' and 'webcam_video'"
-            )
+            raise KeyError("payload must contain both 'path_screen' and 'path_webcam'")
 
         out_dir = (self._data_dir / "results" / recording_id).resolve()
-        out_dir.relative_to(self._data_dir) 
+        out_dir.relative_to(self._data_dir)
         out_dir.mkdir(parents=True, exist_ok=True)
 
-        status_path = out_dir / "status.json"
-        status_path.write_text(
-            json.dumps(
-                {"job_id": recording_id, "status": JOB_STATUS_IN_PROGRESS},
-                ensure_ascii=False,
-                indent=2,
-            ),
-            encoding="utf-8",
-        )
+        print("VID PATH: ", screen_video_path)
+        print("CAM PATH:", webcam_video_path)
+        
+        screen_video = Video(screen_video_path)
+        webcam_video = Video(webcam_video_path)
+        
+        self.process_video(screen_video, webcam_video, out_dir)
+        
+        intervals: list[dict[str, Any]] = []
 
-        outputs: Dict[str, Any] = {}
-
-        try:
-            screen_video = Video(self._resolve_path(screen_video_path))
-            webcam_video = Video(self._resolve_path(webcam_video_path))
-            
-            job_output = self.process_video(
-                screen_video, 
-                webcam_video, 
-                out_dir=out_dir
-            )
-
-            result = {
-                "job_id": recording_id, 
-                "status": JOB_STATUS_DONE, 
-                "output": job_output
-            }
-
-            status_path.write_text(
-                json.dumps(result, ensure_ascii=False, indent=2),
-                encoding="utf-8",
-            )
-
-            return result
-
-        except Exception as e:
-            status_path.write_text(
-                json.dumps(
-                    {"job_id": recording_id, "status": JOB_STATUS_FAILED},
-                    ensure_ascii=False,
-                    indent=2,
-                ),
-                encoding="utf-8",
-            )
-            raise
+        
+        result = {
+            "recording_id": recording_id,
+            "intervals": intervals,
+        }
+        
+        print(f"RESULT: {result}")
+        
+        return result
         
 if __name__ == "__main__":
     tracker = Tracker()
@@ -266,4 +221,3 @@ if __name__ == "__main__":
     cam_video = Video("/home/berlet/webcam.mp4")
     with torch.no_grad():
         tracker.process_video(screen_video, cam_video, Path("../preprocessed"))
-    
