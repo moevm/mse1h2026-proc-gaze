@@ -17,5 +17,6 @@ class RecordingRead(BaseModel):
     status: RecordingStatus
     processed_date: Optional[datetime] = None
     suspicion_level: Optional[float] = None
+    count_suspicions: int = 0
 
     model_config = {"from_attributes": True}
