@@ -27,7 +27,7 @@ jobs:
       id-token: write
     strategy:
       matrix:
-        service: [frontend, backend, tracker]
+        service: [frontend, backend, tracking]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
