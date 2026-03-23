@@ -1,6 +1,7 @@
 import logging
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
+from typing import Optional
 
 from fastapi import UploadFile
 from sqlalchemy import select, func
@@ -9,7 +10,7 @@ from starlette import status
 from starlette.exceptions import HTTPException
 
 from src.schemas.recording_schema import RecordingRead
-from src.models import Recording, SuspiciousInterval
+from src.models import Recording, SuspiciousInterval, RecordingStatus
 from src.util.connection import connection
 from src.util import file_storage
 from pathlib import Path
@@ -70,6 +71,20 @@ async def get_screen(id: str):
     return await file_storage.get_file(recording.path_screen)
 
 
+async def get_processed_webcam(id: str):
+    recording = await get_recording(id)
+    if not recording.path_processed_webcam:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Processed webcam video not ready yet")
+    return await file_storage.get_file(recording.path_processed_webcam)
+
+
+async def get_processed_screen(id: str):
+    recording = await get_recording(id)
+    if not recording.path_processed_screen:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Processed screen video not ready yet")
+    return await file_storage.get_file(recording.path_processed_screen)
+
+
 @connection
 async def create_recording(student_id: str,
                            webcam: UploadFile,
@@ -100,3 +115,26 @@ async def create_recording(student_id: str,
     await session.commit()
     await session.refresh(recording)
     return RecordingRead.model_validate(recording)
+
+
+@connection
+async def mark_recording_done(
+    recording_id: uuid.UUID,
+    path_processed_webcam: Optional[str] = None,
+    path_processed_screen: Optional[str] = None,
+    session: AsyncSession = None,
+):
+    recording = (
+        await session.execute(
+            select(Recording).where(Recording.recording_id == recording_id)
+        )
+    ).scalar_one_or_none()
+    if recording is None:
+        return
+    recording.status = RecordingStatus.DONE
+    recording.processed_date = datetime.now(timezone.utc)
+    if path_processed_webcam:
+        recording.path_processed_webcam = path_processed_webcam
+    if path_processed_screen:
+        recording.path_processed_screen = path_processed_screen
+    await session.commit()

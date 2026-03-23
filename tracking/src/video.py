@@ -13,7 +13,7 @@ class Video:
             self._video = None
             raise ValueError(f"Cannot open video source: {self._path}")
 
-        self._fps: float = float(self._video.get(cv2.CAP_PROP_FPS) or 0.0)
+        self._fps: float = float(self._video.get(cv2.CAP_PROP_FPS) or 30.0) # works very bad
         self._frame_count: int = int(self._video.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
         self._width: int = int(self._video.get(cv2.CAP_PROP_FRAME_WIDTH) or 0)
         self._height: int = int(self._video.get(cv2.CAP_PROP_FRAME_HEIGHT) or 0)
