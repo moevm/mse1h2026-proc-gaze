@@ -52,7 +52,9 @@ jobs:
         uses: docker/build-push-action@v5.3.0
         with:
           context: ./${{ matrix.service }}
-          file: ./${{ matrix.service }}/Dockerfile-action
+          file: ./${{ matrix.service }}/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            MODELS_URL=${{ secrets.MODELS_URL }}
