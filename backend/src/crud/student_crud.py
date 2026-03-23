@@ -32,11 +32,12 @@ async def get_students(session: AsyncSession) -> List[StudentRead]:
 
 @connection
 async def create_student(student_create: StudentCreate, session: AsyncSession) -> StudentRead:
-    student = Student()
-    student.first_name = student_create.first_name
-    student.last_name  = student_create.last_name
-    student.patronymic = student_create.patronymic
-    student.group      = student_create.group
+    student = Student(
+        first_name=student_create.first_name,
+        last_name=student_create.last_name,
+        patronymic=student_create.patronymic,
+        group=student_create.group,
+    )
     
     session.add(student)
     await session.commit()
