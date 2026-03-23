@@ -1,20 +1,22 @@
-from src.constants import *
-from src.gaze_estimator import *
-from src.gaze_mapper import *
+from .constants import *
+from .gaze_estimator import GazeEstimator
+from .gaze_mapper import GazeMapper
 
 import json
 import os
 from pathlib import Path
-from typing import Any, Optional, Dict
-
-from .constants import JOB_STATUS_DONE, JOB_STATUS_FAILED, JOB_STATUS_IN_PROGRESS, DEFAULT_SCREEN_FPS
+from typing import Any, Optional, Dict, List
+import numpy as np
+import cv2
+import torch
 from .video import Video
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class Tracker:
-    def __init__(self, precision_mode: int=0, threshold: float=0.5) -> None:        
+    def __init__(self, precision_mode: int=0, threshold: float=0.5, use_torch_gaze: bool=False) -> None:        
         self._data_dir = Path(os.environ.get("DATA_DIR", "../preprocessed")).resolve()
-        self.gaze_estimator: GazeEstimator = GazeEstimator(precision_mode, threshold)
+        self.gaze_estimator: GazeEstimator = GazeEstimator(precision_mode, threshold, use_torch_gaze)
         self.gaze_mapper: GazeMapper = GazeMapper()
     
     @staticmethod
@@ -139,18 +141,18 @@ class Tracker:
         out_dir = out_dir.resolve()
         out_dir.mkdir(parents=True, exist_ok=True)
         
-        # Initialize video writers
+
         camera_writer = cv2.VideoWriter(
             str(out_dir / "camera.mp4"), 
             cv2.VideoWriter_fourcc(*"mp4v"), 
             camera_video.fps, 
-            (camera_video.width, camera_video.height)  # Assuming properties, not _width
+            (camera_video._width, camera_video._height)
         )
         screen_writer = cv2.VideoWriter(
             str(out_dir / "screen.mp4"), 
             cv2.VideoWriter_fourcc(*"mp4v"), 
             DEFAULT_SCREEN_FPS, 
-            (screen_video.width, screen_video.height)
+            (screen_video._width, screen_video._height)
         )
         
         try:
@@ -221,8 +223,6 @@ class Tracker:
             encoding="utf-8",
         )
 
-        outputs: Dict[str, Any] = {}
-
         try:
             screen_video = Video(self._resolve_path(screen_video_path))
             webcam_video = Video(self._resolve_path(webcam_video_path))
@@ -258,7 +258,7 @@ class Tracker:
             raise
         
 if __name__ == "__main__":
-    tracker = Tracker()
+    tracker = Tracker(use_torch_gaze=True)
     tracker.gaze_mapper = torch.load("../models/other/mapper.pth", map_location=device, weights_only=False)
     tracker.gaze_mapper.eval()
     

@@ -1,7 +1,6 @@
 import asyncio
 import logging
 import os
-import traceback
 from typing import Any
 import torch
 
