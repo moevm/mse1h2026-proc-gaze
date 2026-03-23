@@ -46,7 +46,8 @@ class Recording(Base):
 
     path_screen     = Column(String(255), nullable=False)
     path_webcam     = Column(String(255), nullable=False)
-    path_processed  = Column(String(255), nullable=True)
+    path_processed_webcam  = Column(String(255), nullable=True)
+    path_processed_screen  = Column(String(255), nullable=True)
     created_date    = Column(TIMESTAMP(timezone=True), default=lambda: datetime.now(timezone.utc).replace(tzinfo=None), nullable=False)
     status          = Column(Enum(RecordingStatus), default=RecordingStatus.PENDING, nullable=False)
     processed_date  = Column(TIMESTAMP(timezone=True), nullable=True)

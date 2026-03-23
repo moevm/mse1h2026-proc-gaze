@@ -20,7 +20,8 @@ async def handle_suspicious_intervals(message: SuspiciousResult):
     await suspicious_crud.save_suspicious_intervals(message)
     await recording_crud.mark_recording_done(
         recording_id=message.recording_id,
-        path_processed=message.path_processed,
+        path_processed_webcam=message.path_processed_webcam,
+        path_processed_screen=message.path_processed_screen,
     )
     await notification_crud.create_notification(
         NotificationCreate(

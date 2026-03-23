@@ -184,7 +184,8 @@ class Tracker:
                         "description": "описание"
                     }
                 ],
-                "path_processed": "results/uuid/camera.mp4"
+                "path_processed_webcam": "results/uuid/camera.mp4",
+                "path_processed_screen": "results/uuid/screen.mp4"
             }
         """
         recording_id = str(payload["recording_id"])
@@ -216,7 +217,8 @@ class Tracker:
         result = {
             "recording_id": recording_id,
             "intervals": intervals,
-            "path_processed": self._to_relative_path(out_dir / "camera.mp4"),
+            "path_processed_webcam": self._to_relative_path(out_dir / "camera.mp4"),
+            "path_processed_screen": self._to_relative_path(out_dir / "screen.mp4"),
         }
 
         print(f"RESULT: {result}")

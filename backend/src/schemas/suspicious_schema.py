@@ -35,7 +35,8 @@ class SuspiciousInterval(BaseModel):
 class SuspiciousResult(BaseModel):
     recording_id: uuid.UUID = Field(...)
     intervals: List[SuspiciousInterval] = Field(...)
-    path_processed: Optional[str] = None
+    path_processed_webcam: Optional[str] = None
+    path_processed_screen: Optional[str] = None
     class Config:
         from_attributes = True
         json_encoders = {
