@@ -34,7 +34,6 @@ async def on_startup():
     tracker = Tracker()
     tracker.gaze_mapper.eval()
     tracker.gaze_mapper.to(device)
-    tracker.gaze_estimator.to(device)
     logger.info("Tracker ready, waiting for messages...")
 
 
