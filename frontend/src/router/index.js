@@ -14,6 +14,12 @@ const router = createRouter({
             name: 'MainView',
             component: () => import('@/views/MainView.vue'),
             meta: { requiresAuth: true, requiresVerification: true }
+        },
+        {
+            path: '/result',
+            name: 'ResultView',
+            component: () => import('@/views/ResultView.vue'),
+            meta: { requiresAuth: true, requiresVerification: true }
         }
     ],
 })

@@ -1,6 +1,6 @@
-from .constants import *
-from .gaze_estimator import *
-from .gaze_mapper import *
+from src.constants import *
+from src.gaze_estimator import *
+from src.gaze_mapper import *
 
 import json
 import os
@@ -185,34 +185,36 @@ class Tracker:
         """
         Process a tracking job from payload.
 
-        Expected payload format:
+        Формат результата:
             {
-                "job_id": "123",
-                "inputs": {
-                    "screen_video": "uploads/screen.mp4",
-                    "webcam_video": "uploads/webcam.mp4"
-                }
+                "recording_id": "uuid",
+                "intervals": [
+                    {
+                        "time": "00:00:05",
+                        "duration": 3.5,
+                        "description": "описание"
+                    }
+                ]
             }
         """
-        job_id = str(payload["job_id"])
-        inputs = payload.get("inputs") or {}
+        recording_id = str(payload["recording_id"])
 
-        screen_video_path = inputs.get("screen_video")
-        webcam_video_path = inputs.get("webcam_video")
+        screen_video_path = payload.get("path_screen")
+        webcam_video_path = payload.get("path_webcam")
 
         if not screen_video_path or not webcam_video_path:
             raise KeyError(
                 "payload.inputs must contain both 'screen_video' and 'webcam_video'"
             )
 
-        out_dir = (self._data_dir / "results" / job_id).resolve()
-        out_dir.relative_to(self._data_dir)  # Security check
+        out_dir = (self._data_dir / "results" / recording_id).resolve()
+        out_dir.relative_to(self._data_dir) 
         out_dir.mkdir(parents=True, exist_ok=True)
 
         status_path = out_dir / "status.json"
         status_path.write_text(
             json.dumps(
-                {"job_id": job_id, "status": JOB_STATUS_IN_PROGRESS},
+                {"job_id": recording_id, "status": JOB_STATUS_IN_PROGRESS},
                 ensure_ascii=False,
                 indent=2,
             ),
@@ -230,13 +232,11 @@ class Tracker:
                 webcam_video, 
                 out_dir=out_dir
             )
-            
-            outputs["input_name"] = job_output
 
             result = {
-                "job_id": job_id, 
+                "job_id": recording_id, 
                 "status": JOB_STATUS_DONE, 
-                "outputs": outputs
+                "output": job_output
             }
 
             status_path.write_text(
@@ -249,7 +249,7 @@ class Tracker:
         except Exception as e:
             status_path.write_text(
                 json.dumps(
-                    {"job_id": job_id, "status": JOB_STATUS_FAILED},
+                    {"job_id": recording_id, "status": JOB_STATUS_FAILED},
                     ensure_ascii=False,
                     indent=2,
                 ),
@@ -261,7 +261,6 @@ if __name__ == "__main__":
     tracker = Tracker()
     tracker.gaze_mapper = torch.load("../models/other/mapper.pth", map_location=device, weights_only=False)
     tracker.gaze_mapper.eval()
-    print(tracker.gaze_mapper.translation_vec)
     
     screen_video = Video("/home/berlet/screen.mp4")
     cam_video = Video("/home/berlet/webcam.mp4")
