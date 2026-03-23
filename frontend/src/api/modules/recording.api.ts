@@ -1,4 +1,4 @@
-import { apiFileClient } from '../config';
+import { apiFileClient, apiJsonClient } from '../config';
 import type { SuspiciousItem } from '@/types/suspicious';
 
 class RecordingApi {
@@ -17,7 +17,7 @@ class RecordingApi {
     }
 
     async getSuspicious(recordingId: string): Promise<SuspiciousItem[]> {
-        const response = await apiFileClient.get(`/suspicious/${recordingId}`);
+        const response = await apiJsonClient.get(`/suspicious/${recordingId}`);
         return response.data;
     }
 }

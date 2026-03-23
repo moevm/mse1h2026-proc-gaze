@@ -4,13 +4,13 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import UploadFile
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 from starlette.exceptions import HTTPException
 
 from src.schemas.recording_schema import RecordingRead
-from src.models import Recording, RecordingStatus
+from src.models import Recording, SuspiciousInterval, RecordingStatus
 from src.util.connection import connection
 from src.util import file_storage
 from pathlib import Path
@@ -18,9 +18,18 @@ from pathlib import Path
 
 @connection
 async def get_recordings(session: AsyncSession):
-    recordings = await session.execute(select(Recording))
-    recordings = recordings.scalars().all()
-    return [RecordingRead.model_validate(recording) for recording in recordings]
+    count_sub = (
+        select(func.count(SuspiciousInterval.sus_id))
+        .where(SuspiciousInterval.recording_id == Recording.recording_id)
+        .scalar_subquery()
+        .label("count_suspicions")
+    )
+    result = await session.execute(select(Recording, count_sub))
+    rows = result.all()
+    return [
+        RecordingRead.model_validate({**recording.__dict__, "count_suspicions": count})
+        for recording, count in rows
+    ]
 
 
 @connection
