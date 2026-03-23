@@ -1,20 +1,20 @@
-from constants import *
-from gaze_estimator import *
-from gaze_mapper import *
+from .constants import *
+from .gaze_estimator import *
+from .gaze_mapper import *
 
 import json
 import os
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Optional, Dict
 
-from constants import JOB_STATUS_DONE, JOB_STATUS_FAILED, JOB_STATUS_IN_PROGRESS
-from video import Video
+from .constants import JOB_STATUS_DONE, JOB_STATUS_FAILED, JOB_STATUS_IN_PROGRESS, DEFAULT_SCREEN_FPS
+from .video import Video
 
 
 class Tracker:
     def __init__(self, precision_mode: int=0, threshold: float=0.5) -> None:        
         self._data_dir = Path(os.environ.get("DATA_DIR", "../preprocessed")).resolve()
-        self.gaze_estimator = GazeEstimator(precision_mode, threshold)
+        self.gaze_estimator: GazeEstimator = GazeEstimator(precision_mode, threshold)
         self.gaze_mapper: GazeMapper = GazeMapper()
     
     @staticmethod
@@ -84,8 +84,6 @@ class Tracker:
         
         proj_p = self.gaze_mapper.project(main_vec).cpu().numpy()
         
-        print(f"DEBUG: proj_p raw = {proj_p}")
-        
         x, y, _ = proj_p
         if not all(np.isnan(proj_p)):
             x = int(x)
@@ -118,16 +116,22 @@ class Tracker:
     def _to_relative_path(self, path: Path) -> str:
         return path.resolve().relative_to(self._data_dir).as_posix()
 
-    def process_video(self, screen_video: Video, camera_video: Video, out_dir: Optional[Path] = None) -> dict[str, str]:
+    def process_video(
+            self, 
+            screen_video: Video, 
+            camera_video: Video, 
+            out_dir: Optional[Path] = None
+        ) -> Dict[str, str]:
         """
-        Обрабатывает одно видео и сохраняет результаты в out_dir.
+        Process video pair and save results to out_dir.
 
         Args:
-            video: объект видео для обработки.
-            out_dir: директория, в которую нужно сохранить результаты.
+            screen_video: Video object for screen capture.
+            camera_video: Video object for webcam feed.
+            out_dir: Directory to save results.
 
         Returns:
-            Словарь с относительными путями до артефактов внутри DATA_DIR.
+            Dictionary with relative paths to artifacts within DATA_DIR.
         """
         if out_dir is None:
             return {}
@@ -135,20 +139,39 @@ class Tracker:
         out_dir = out_dir.resolve()
         out_dir.mkdir(parents=True, exist_ok=True)
         
-        camera_writer = cv2.VideoWriter(f"{out_dir}/camera.mp4", cv2.VideoWriter_fourcc(*"mp4v"), camera_video.fps, (camera_video._width, camera_video._height))
-        screen_writer = cv2.VideoWriter(f"{out_dir}/screen.mp4", cv2.VideoWriter_fourcc(*"mp4v"), 30.0, (screen_video._width, screen_video._height))
+        # Initialize video writers
+        camera_writer = cv2.VideoWriter(
+            str(out_dir / "camera.mp4"), 
+            cv2.VideoWriter_fourcc(*"mp4v"), 
+            camera_video.fps, 
+            (camera_video.width, camera_video.height)  # Assuming properties, not _width
+        )
+        screen_writer = cv2.VideoWriter(
+            str(out_dir / "screen.mp4"), 
+            cv2.VideoWriter_fourcc(*"mp4v"), 
+            DEFAULT_SCREEN_FPS, 
+            (screen_video.width, screen_video.height)
+        )
         
-        for camera_frame, screen_frame in zip(camera_video, screen_video):
-            processed_camera_frame = self.process_camera_frame(camera_frame, True)
-            processed_screen_frame = self.process_screen_frame(screen_frame, camera_frame)
-            camera_writer.write(processed_camera_frame)
-            screen_writer.write(processed_screen_frame)
-        camera_writer.release()
-        screen_writer.release()
+        try:
+            for camera_frame, screen_frame in zip(camera_video, screen_video):
+                processed_camera = self.process_camera_frame(camera_frame, draw_bbox=True)
+                processed_screen = self.process_screen_frame(screen_frame, camera_frame)
+                
+                camera_writer.write(processed_camera)
+                screen_writer.write(processed_screen)
+        finally:
+            camera_writer.release()
+            screen_writer.release()
 
+        # Save metadata
         info_path = out_dir / "video_info.json"
-        info_path.write_text(json.dumps(camera_video.info, ensure_ascii=False, indent=2), encoding="utf-8")
+        info_path.write_text(
+            json.dumps(camera_video.info, ensure_ascii=False, indent=2), 
+            encoding="utf-8"
+        )
 
+        # Initialize trajectory file if not exists
         traj_path = out_dir / "trajectory.json"
         if not traj_path.exists():
             traj_path.write_text("{}", encoding="utf-8")
@@ -158,36 +181,16 @@ class Tracker:
             "trajectory": self._to_relative_path(traj_path),
         }
 
-    def process_job(self, payload: dict[str, Any]) -> dict[str, Any]:
+    def process_job(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Обрабатывает задание на трекинг.
+        Process a tracking job from payload.
 
-        Ожидаемый формат payload:
+        Expected payload format:
             {
                 "job_id": "123",
                 "inputs": {
                     "screen_video": "uploads/screen.mp4",
                     "webcam_video": "uploads/webcam.mp4"
-                }
-            }
-
-        Перед началом обработки в results/<job_id>/status.json записывается
-        промежуточный статус IN_PROGRESS. После успешного завершения статус
-        обновляется на DONE, а при ошибке — на FAILED.
-
-        Формат результата:
-            {
-                "job_id": "123",
-                "status": "DONE",
-                "outputs": {
-                    "screen_video": {
-                        "video_info": "results/123/screen_video/video_info.json",
-                        "trajectory": "results/123/screen_video/trajectory.json"
-                    },
-                    "webcam_video": {
-                        "video_info": "results/123/webcam_video/video_info.json",
-                        "trajectory": "results/123/webcam_video/trajectory.json"
-                    }
                 }
             }
         """
@@ -198,39 +201,43 @@ class Tracker:
         webcam_video_path = inputs.get("webcam_video")
 
         if not screen_video_path or not webcam_video_path:
-            raise KeyError("payload.inputs must contain both 'screen_video' and 'webcam_video'")
+            raise KeyError(
+                "payload.inputs must contain both 'screen_video' and 'webcam_video'"
+            )
 
         out_dir = (self._data_dir / "results" / job_id).resolve()
-        out_dir.relative_to(self._data_dir)
+        out_dir.relative_to(self._data_dir)  # Security check
         out_dir.mkdir(parents=True, exist_ok=True)
 
         status_path = out_dir / "status.json"
         status_path.write_text(
             json.dumps(
-                {
-                    "job_id": job_id,
-                    "status": JOB_STATUS_IN_PROGRESS,
-                },
+                {"job_id": job_id, "status": JOB_STATUS_IN_PROGRESS},
                 ensure_ascii=False,
                 indent=2,
             ),
             encoding="utf-8",
         )
 
-        outputs: dict[str, Any] = {}
+        outputs: Dict[str, Any] = {}
 
         try:
-            for input_name, input_path in {
-                "screen_video": screen_video_path,
-                "webcam_video": webcam_video_path,
-            }.items():
-                video_path = self._resolve_path(str(input_path))
-                source_out_dir = out_dir / input_name
+            screen_video = Video(self._resolve_path(screen_video_path))
+            webcam_video = Video(self._resolve_path(webcam_video_path))
+            
+            job_output = self.process_video(
+                screen_video, 
+                webcam_video, 
+                out_dir=out_dir
+            )
+            
+            outputs["input_name"] = job_output
 
-                with Video(video_path) as v:
-                    outputs[input_name] = self.process_video(v, out_dir=source_out_dir)
-
-            result = {"job_id": job_id, "status": JOB_STATUS_DONE, "outputs": outputs}
+            result = {
+                "job_id": job_id, 
+                "status": JOB_STATUS_DONE, 
+                "outputs": outputs
+            }
 
             status_path.write_text(
                 json.dumps(result, ensure_ascii=False, indent=2),
@@ -239,20 +246,17 @@ class Tracker:
 
             return result
 
-        except Exception:
+        except Exception as e:
             status_path.write_text(
                 json.dumps(
-                    {
-                        "job_id": job_id,
-                        "status": JOB_STATUS_FAILED,
-                    },
+                    {"job_id": job_id, "status": JOB_STATUS_FAILED},
                     ensure_ascii=False,
                     indent=2,
                 ),
                 encoding="utf-8",
             )
             raise
-
+        
 if __name__ == "__main__":
     tracker = Tracker()
     tracker.gaze_mapper = torch.load("../models/other/mapper.pth", map_location=device, weights_only=False)

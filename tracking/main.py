@@ -3,6 +3,7 @@ import json
 import os
 import traceback
 from typing import Any
+import torch
 
 import aio_pika
 from aio_pika.abc import AbstractRobustConnection
@@ -14,6 +15,7 @@ AMQP_URL = os.environ["AMQP_URL"]
 JOBS_Q = os.environ.get("AMQP_QUEUE", "tracking.jobs")
 RESULTS_Q = os.environ.get("AMQP_RESULT_QUEUE", "tracking.results")
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def _decode_payload(body: bytes) -> dict[str, Any]:
     return json.loads(body.decode("utf-8"))
@@ -52,13 +54,17 @@ async def main() -> None:
         await channel.declare_queue(RESULTS_Q, durable=True)
 
         tracker = Tracker()
+        if os.path.exists("../models/other/mapper.pth"):
+            tracker.gaze_mapper = torch.load("../models/other/mapper.pth", map_location=device, weights_only=False)
+        tracker.gaze_mapper.eval()
 
         async with jobs_queue.iterator() as it:
             async for message in it:
                 async with message.process(requeue=False):
                     try:
                         payload = _decode_payload(message.body)
-                        result = tracker.process_job(payload)
+                        with torch.no_grad():
+                            result = tracker.process_job(payload)
                     except Exception as error:
                         result = _failed_result(message.body, error)
 

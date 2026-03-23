@@ -5,12 +5,12 @@ import torch
 from tqdm import tqdm
 from torch.utils.data import DataLoader, Dataset
 from typing import List, Tuple
-from video import Video
+from .video import Video
 
 from torch.utils.data import random_split
 import os
 
-from gaze_estimator import GazeEstimator
+from .gaze_estimator import GazeEstimator
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -110,7 +110,6 @@ if __name__ == "__main__":
         data.extend(vecs)
     
     dataset = GazeDataset(data)
-    print(len(dataset))
     
     g = torch.Generator().manual_seed(0)
     train, val = random_split(dataset, [0.9, 0.1], g)
@@ -118,7 +117,7 @@ if __name__ == "__main__":
     train_loader = DataLoader(train, batch_size=1, shuffle=True, num_workers=2, pin_memory=True)
     val_loader = DataLoader(val, batch_size=1, shuffle=True, num_workers=2, pin_memory=True)
     
-    epochs = 50
+    epochs = 25
     mapper = calibrate(epochs, mapper, train_loader, val_loader)
     
     torch.save(mapper, "../models/other/mapper.pth")
