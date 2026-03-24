@@ -81,46 +81,7 @@ services:
       depends_on:
         - backend
 
-  db-seed:
-    image: postgres:16-alpine
-    depends_on:
-      db:
-        condition: service_healthy
-      backend:
-        condition: service_started
-    volumes:
-      - ./backend/db:/scripts
-    environment:
-      PGPASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_DB: ${POSTGRES_DB}
-    command: >
-      sh -c "
-        echo 'Waiting for student table to be created by backend...';
-        while true; do
-          TABLE_EXISTS=$$(psql -h db -U $$POSTGRES_USER -d $$POSTGRES_DB -t -c \"SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'student');\" 2>/dev/null | xargs);
-
-          if [ \"$$TABLE_EXISTS\" = 't' ]; then
-            echo 'Student table found!';
-            break;
-          fi;
-
-          echo 'Student table not ready yet, waiting...';
-          sleep 5;
-        done;
-
-        echo 'Running seed scripts...';
-        for script in /scripts/*.sql; do
-          if [ -f \"$$script\" ]; then
-            echo \"Running $$script\";
-            psql -h db -U $$POSTGRES_USER -d $$POSTGRES_DB -f \"$$script\";
-          fi
-        done;
-
-        echo 'Seed completed!';
-      "
-    restart: "no"
-
 volumes:
   shared_data:
   pgdata:
+  
