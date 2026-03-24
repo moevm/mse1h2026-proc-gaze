@@ -3,14 +3,14 @@ import type { SuspiciousItem } from '@/types/suspicious';
 
 class RecordingApi {
     async getWebcamVideo(recordingId: string): Promise<Blob> {
-        const response = await apiFileClient.get(`/recording/webcam/${recordingId}`, {
+        const response = await apiFileClient.get(`/recording/processed/webcam/${recordingId}`, {
             responseType: 'blob',
         });
         return response.data;
     }
 
     async getScreenVideo(recordingId: string): Promise<Blob> {
-        const response = await apiFileClient.get(`/recording/screen/${recordingId}`, {
+        const response = await apiFileClient.get(`/recording/processed/screen/${recordingId}`, {
             responseType: 'blob',
         });
         return response.data;
