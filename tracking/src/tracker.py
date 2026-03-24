@@ -23,8 +23,8 @@ class Tracker:
             cv2.circle(image, p, 2, (0, 0, 255), 2)
         return image
 
-    def process_camera_frame(self, frame: np.ndarray, draw_bbox: bool = False) -> np.ndarray:
-        gaze_vecs, pupils, offsets, eye_bboxes = self.gaze_estimator.estimate(frame)
+    def process_camera_frame(self, frame: np.ndarray, gaze_info: Tuple[np.ndarray], draw_bbox: bool = False) -> np.ndarray:
+        gaze_vecs, pupils, offsets, eye_bboxes = gaze_info
 
         res = np.copy(frame)
         for gaze_vec, pupil, offset, bbox in zip(gaze_vecs, pupils, offsets, eye_bboxes):
@@ -78,10 +78,13 @@ class Tracker:
         out.release()
         cv2.destroyAllWindows()
 
-    def process_screen_frame(self, screen_frame: np.ndarray, camera_frame: np.ndarray) -> np.ndarray:
-        vec, _, _, _ = self.gaze_estimator.estimate(camera_frame)
-        main_vec = vec[0]
+    def process_screen_frame(self, screen_frame: np.ndarray, gaze_info: Tuple[np.ndarray]) -> np.ndarray:
+        gaze_vecs, _, _, _ = gaze_info
+        if not gaze_vecs:
+            print("detected suspicious frame")
+            return screen_frame
 
+        main_vec = gaze_vecs[0]
         proj_p = self.gaze_mapper.project(main_vec).cpu().numpy()
 
         x, y, _ = proj_p
@@ -154,8 +157,10 @@ class Tracker:
 
         try:
             for camera_frame, screen_frame in zip(camera_video, screen_video):
-                processed_camera = self.process_camera_frame(camera_frame, draw_bbox=True)
-                processed_screen = self.process_screen_frame(screen_frame, camera_frame)
+                gaze_vecs, pupils, offsets, eye_bboxes = self.gaze_estimator.estimate(camera_frame)
+                gaze_info = (gaze_vecs, pupils, offsets, eye_bboxes)
+                processed_camera = self.process_camera_frame(camera_frame, gaze_info,  draw_bbox=True)
+                processed_screen = self.process_screen_frame(screen_frame, gaze_info)
 
                 camera_writer.write(processed_camera)
                 screen_writer.write(processed_screen)
@@ -200,9 +205,6 @@ class Tracker:
         out_dir.relative_to(self._data_dir)
         out_dir.mkdir(parents=True, exist_ok=True)
 
-        print("VID PATH: ", screen_video_path)
-        print("CAM PATH:", webcam_video_path)
-
         screen_video = Video(screen_video_path)
         webcam_video = Video(webcam_video_path)
 
@@ -220,7 +222,5 @@ class Tracker:
             "path_processed_webcam": self._to_relative_path(out_dir / "camera.mp4"),
             "path_processed_screen": self._to_relative_path(out_dir / "screen.mp4"),
         }
-
-        print(f"RESULT: {result}")
 
         return result
