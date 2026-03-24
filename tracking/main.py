@@ -39,7 +39,8 @@ async def on_startup():
 @broker.subscriber(jobs_queue)
 async def handle_job(message: dict[str, Any]):
     try:
-        result = tracker.process_job(message)
+        with torch.no_grad():
+            result = tracker.process_job(message)
     except Exception as error:
         recording_id = message.get("recording_id") if isinstance(message, dict) else None
         logger.exception("Error processing recording %s", recording_id)

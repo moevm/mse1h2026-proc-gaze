@@ -29,7 +29,8 @@
 import {onMounted, ref} from 'vue';
 import router from "@/router/index.js";
 import RecordItem from "@/components/main_view/RecordItem.vue";
-import { createRecording } from "@/types/recordings"
+import {convertRecordingReadToRecording, createRecording} from "@/types/recordings"
+import {mainApi} from "@/api";
 
 const records = ref([]);
 
@@ -47,9 +48,8 @@ const toggleExpand = (recording_id) => {
 
 onMounted(async () => {
   try {
-    //API запрос
-    const data = [];
-    records.value = data.map(item => createRecording(item));
+    const data = await mainApi.getRecordings();
+    records.value = data.map(item => convertRecordingReadToRecording(item));
   } catch (error) {
     console.error('Error with uploading records:', error);
   }

@@ -39,6 +39,16 @@ async def get_webcam(id: str):
     return webcam
 
 
+@router.get("/processed/webcam/{id}")
+async def get_processed_webcam(id: str):
+    return await recording_crud.get_processed_webcam(id)
+
+
+@router.get("/processed/screen/{id}")
+async def get_processed_screen(id: str):
+    return await recording_crud.get_processed_screen(id)
+
+
 @router.get("", response_model=List[RecordingRead])
 async def get_recordings():
     recordings = await recording_crud.get_recordings()

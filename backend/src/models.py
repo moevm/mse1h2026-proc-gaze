@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime, timezone
 from enum import Enum as PyEnum
 
-from sqlalchemy import Column, String, DateTime, Float, ForeignKey, Enum, Time, Boolean, TIMESTAMP
+from sqlalchemy import Column, String, DateTime, Float, Integer, ForeignKey, Enum, Time, Boolean, TIMESTAMP
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -46,7 +46,8 @@ class Recording(Base):
 
     path_screen     = Column(String(255), nullable=False)
     path_webcam     = Column(String(255), nullable=False)
-    path_processed  = Column(String(255), nullable=True)
+    path_processed_webcam  = Column(String(255), nullable=True)
+    path_processed_screen  = Column(String(255), nullable=True)
     created_date    = Column(TIMESTAMP(timezone=True), default=lambda: datetime.now(timezone.utc).replace(tzinfo=None), nullable=False)
     status          = Column(Enum(RecordingStatus), default=RecordingStatus.PENDING, nullable=False)
     processed_date  = Column(TIMESTAMP(timezone=True), nullable=True)
@@ -80,7 +81,7 @@ class SuspiciousInterval(Base):
     recording_id = Column(UUID(as_uuid=True), ForeignKey("recording.recording_id", ondelete="CASCADE"), nullable=False)
     
     time        = Column(Time, nullable=False)
-    duration    = Column(Float, nullable=False)
+    duration    = Column(Integer, nullable=False)
     description = Column(String(500), nullable=False)
 
     recording = relationship("Recording", back_populates="suspicious_intervals")
