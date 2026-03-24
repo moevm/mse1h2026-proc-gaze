@@ -1,4 +1,4 @@
-PTH2MODELS = "/models/"
+PTH2MODELS = "/intel/"
 
 PRECISIONS = ["FP32", "FP16-INT8", "FP16"]
 
