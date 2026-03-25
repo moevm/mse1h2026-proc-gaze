@@ -201,6 +201,8 @@ class Tracker:
             self.convert_codec(input_path=camera_out_raw, output_path=camera_out)
             self.convert_codec(input_path=screen_out_raw, output_path=screen_out)
         finally:
+            # TODO: пока оставляем сырые видосы, нужна более аккуратная постобработка и проверка
+            pass
             camera_out_raw.unlink(missing_ok=True)
             screen_out_raw.unlink(missing_ok=True)
 
