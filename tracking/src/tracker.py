@@ -2,8 +2,8 @@ from src.constants import *
 from src.gaze_estimator import *
 from src.gaze_mapper import *
 
-import json
 import os
+import ffmpeg
 from pathlib import Path
 from typing import Any, Optional, Dict, List
 
@@ -117,6 +117,26 @@ class Tracker:
 
     def _to_relative_path(self, path: Path) -> str:
         return path.resolve().relative_to(self._data_dir).as_posix()
+    
+    @staticmethod
+    def convert_codec(input_path: Path, output_path: Path) -> None:
+        try:
+            # docs: https://kkroening.github.io/ffmpeg-python/
+            (
+                ffmpeg
+                .input(str(input_path))
+                .output(
+                    str(output_path),
+                    vcodec="libx264",
+                    pix_fmt='yuv420p',
+                    movflags='+faststart',
+                    an=None # disable audio
+                )
+                .run(overwrite_output=True, capture_stdout=True, capture_stderr=True)
+            )
+        except ffmpeg.Error as e:
+            print(e.stderr.decode("utf-8", errors="replace") if e.stderr else str(e))
+            raise
 
     def process_video(
             self,
@@ -141,15 +161,24 @@ class Tracker:
 
         out_dir = out_dir.resolve()
         out_dir.mkdir(parents=True, exist_ok=True)
+        
+        '''
+        Принцип обработки видео:
+        1. Получаем на вход видео и обрабатываем их, сохраняем результат обработки (видео) в _raw.mp4 часть
+        2. Преобразуем _raw.mp4 часть в .mp4 часть для корректного отображения в WEB-е перекодировкой в формат AVC (через ffmpeg-python)
+        3. Удаляем _raw.mp4 
+        '''
+        camera_out_raw, screen_out_raw = out_dir / "camera_raw.mp4", out_dir / "screen_raw.mp4"
+        camera_out, screen_out = out_dir / "camera.mp4", out_dir / "screen.mp4"
 
         camera_writer = cv2.VideoWriter(
-            str(out_dir / "camera.mp4"),
+            str(camera_out_raw),
             cv2.VideoWriter_fourcc(*"mp4v"),
             camera_video.fps,
             (camera_video._width, camera_video._height)
         )
         screen_writer = cv2.VideoWriter(
-            str(out_dir / "screen.mp4"),
+            str(screen_out_raw),
             cv2.VideoWriter_fourcc(*"mp4v"),
             DEFAULT_SCREEN_FPS,
             (screen_video._width, screen_video._height)
@@ -167,6 +196,15 @@ class Tracker:
         finally:
             camera_writer.release()
             screen_writer.release()
+            
+        try:
+            self.convert_codec(input_path=camera_out_raw, output_path=camera_out)
+            self.convert_codec(input_path=screen_out_raw, output_path=screen_out)
+        finally:
+            # TODO: пока оставляем сырые видосы, нужна более аккуратная постобработка и проверка
+            pass
+            camera_out_raw.unlink(missing_ok=True)
+            screen_out_raw.unlink(missing_ok=True)
 
     def process_job(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
