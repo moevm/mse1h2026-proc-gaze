@@ -9,7 +9,9 @@ mse1h2026-proc-gaze
 
 ## Итерация 2
 
-todo
+Материалы 2 итерации доступны в ветке `reports`: [reports.md](https://github.com/moevm/mse1h2026-proc-gaze/blob/reports/reports.md)
+
+Ссылка на презентацию: [URL](https://github.com/moevm/mse1h2026-proc-gaze/blob/reports/docs/iteration2.pdf)
 
 ## Запуск проекта
 
@@ -38,7 +40,7 @@ docker compose up --build
 После перехода на данную страницу появится возможность загрузки видео. В окне загрузки видео необходимо загрузить видео с камеры и видео с экрана.
 
 Для теста работоспособности проекта можно взять демонстрационные видео, которые находятся по ссылке:
-> todo
+> https://github.com/moevm/mse1h2026-proc-gaze/tree/main/assets
 
 После загрузки видео нужно указать корректный UUID студента, например 
 ```285a1389-be7c-43eb-9d76-9afbfb715458```
