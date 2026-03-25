@@ -133,6 +133,9 @@
 ### Скринкасты
 Ссылка на скринкаст: [URL](https://github.com/moevm/mse1h2026-proc-gaze/blob/reports/docs/screencast_iteration2.mp4)
 
+### Инструкция по запуску
+Инструкция по запуску проекта и проверке итерации указана в README: [README](https://github.com/moevm/mse1h2026-proc-gaze/blob/main/README.md)
+
 ### Запланированные задачи
 1. Реализация главной страницы и страницы просмотра результата на клиенте;
 1. Реализация REST-API на серверной части для взаимодействия с клиентом;
