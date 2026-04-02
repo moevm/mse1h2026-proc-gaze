@@ -5,6 +5,9 @@
         <button class="upload-btn" @click="goToUpload">
           + Загрузить видео
         </button>
+        <button class="upload-btn" @click="goToDump">
+          Загрузить студентов
+        </button>
       </div>
 
       <h2 class="list-title">Загруженные видео</h2>
@@ -37,6 +40,11 @@ const records = ref([]);
 
 const goToUpload = () => {
   router.push({ name: 'UploadPlayerView' });
+};
+
+
+const goToDump = () => {
+  router.push({ name: 'DumpStudentView' });
 };
 
 const toggleExpand = (recording_id) => {
@@ -82,6 +90,9 @@ onMounted(async () => {
 .upload-button-container {
   text-align: center;
   margin-bottom: 1.5rem;
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
 }
 
 .upload-btn {
