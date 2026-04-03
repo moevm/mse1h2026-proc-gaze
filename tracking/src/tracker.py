@@ -1,20 +1,24 @@
-from src.constants import *
-from src.gaze_estimator import *
-from src.gaze_mapper import *
+from .constants import *
+from .gaze_estimator import GazeEstimator
+from .gaze_mapper import GazeMapper
 
 import os
 import ffmpeg
 from pathlib import Path
-from typing import Any, Optional, Dict, List
+from typing import Optional, List, Any, Dict
+import numpy as np
+import cv2
+import torch
 
 from src.constants import JOB_STATUS_DONE, JOB_STATUS_FAILED, JOB_STATUS_IN_PROGRESS, DEFAULT_SCREEN_FPS
 from src.video import Video
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class Tracker:
-    def __init__(self, precision_mode: int = 0, threshold: float = 0.5) -> None:
+    def __init__(self, precision_mode: int=0, threshold: float=0.5, use_torch_gaze: bool=False) -> None:        
         self._data_dir = Path(os.environ.get("DATA_DIR", "../preprocessed")).resolve()
-        self.gaze_estimator: GazeEstimator = GazeEstimator(precision_mode, threshold)
+        self.gaze_estimator: GazeEstimator = GazeEstimator(precision_mode, threshold, use_torch_gaze)
         self.gaze_mapper: GazeMapper = GazeMapper()
 
     @staticmethod
@@ -246,8 +250,7 @@ class Tracker:
         screen_video = Video(screen_video_path)
         webcam_video = Video(webcam_video_path)
 
-        with torch.no_grad():
-            self.process_video(screen_video, webcam_video, out_dir)
+        self.process_video(screen_video, webcam_video, out_dir)
 
         screen_video.close()
         webcam_video.close()
