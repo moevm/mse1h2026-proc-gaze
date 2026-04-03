@@ -2,11 +2,15 @@ import uuid
 from datetime import datetime, timezone
 from enum import Enum as PyEnum
 
-from sqlalchemy import Column, String, DateTime, Float, Integer, ForeignKey, Enum, Time, Boolean, TIMESTAMP
+from sqlalchemy import Column, String, DateTime, Float, Integer, ForeignKey, Enum, Time, Boolean, TIMESTAMP, MetaData
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import relationship
+from sqlalchemy.ext.asyncio import AsyncAttrs
+from sqlalchemy.orm import relationship, DeclarativeBase
 
-from src.util.database import Base
+metadata = MetaData(schema="mse_proc_gaze_schema")
+
+class Base(AsyncAttrs, DeclarativeBase):
+    metadata = metadata
 
 
 class RecordingStatus(PyEnum):
