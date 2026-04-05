@@ -1,0 +1,75 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    restart: always
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+  backend:
+    image: ghcr.io/moevm/mse1h2026-proc-gaze-backend:main # пишите свою ветку
+    environment:
+      DATA_DIR: ${DATA_DIR}
+      DATABASE_URL: ${DATABASE_URL}
+      AMQP_URL: ${AMQP_URL}
+      AMQP_QUEUE: ${AMQP_QUEUE}
+      AMQP_RESULT_QUEUE: ${AMQP_RESULT_QUEUE}
+    volumes:
+      - shared_data:/data
+    depends_on:
+      db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+  tracker:
+    image: ghcr.io/moevm/mse1h2026-proc-gaze-tracking:main # пишите свою ветку
+    environment:
+      DATA_DIR: ${DATA_DIR}
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      AMQP_URL: ${AMQP_URL}
+      AMQP_QUEUE: ${AMQP_QUEUE}
+      AMQP_RESULT_QUEUE: ${AMQP_RESULT_QUEUE}
+    volumes:
+      - shared_data:/data
+    depends_on:
+      db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  frontend:
+      image: ghcr.io/moevm/mse1h2026-proc-gaze-frontend:main # пишите свою ветку
+      ports:
+        - "80:80"
+      depends_on:
+        - backend
+
+volumes:
+  shared_data:
+  pgdata:
