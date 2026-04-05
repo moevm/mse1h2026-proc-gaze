@@ -7,7 +7,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.orm import relationship, DeclarativeBase
 
-metadata = MetaData(schema="mse_proc_gaze_schema")
+metadata = MetaData(schema="public")
 
 class Base(AsyncAttrs, DeclarativeBase):
     metadata = metadata
