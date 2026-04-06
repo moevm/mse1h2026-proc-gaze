@@ -23,4 +23,4 @@ class JobStatus(str, Enum):
     DONE = "DONE"
     FAILED = "FAILED"
 
-DEFAULT_SCREEN_FPS = 30.0
+DEFAULT_FPS = 30.0
