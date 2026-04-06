@@ -7,7 +7,7 @@ import ffmpeg
 from pathlib import Path
 from typing import Any, Optional, Dict, List
 
-from src.constants import JOB_STATUS_DONE, JOB_STATUS_FAILED, JOB_STATUS_IN_PROGRESS, DEFAULT_SCREEN_FPS
+from src.constants import JOB_STATUS_DONE, JOB_STATUS_FAILED, JOB_STATUS_IN_PROGRESS, DEFAULT_FPS
 from src.video import Video
 
 
@@ -175,13 +175,13 @@ class Tracker:
             str(camera_out_raw),
             cv2.VideoWriter_fourcc(*"mp4v"),
             camera_video.fps,
-            (camera_video._width, camera_video._height)
+            (camera_video.width, camera_video.height)
         )
         screen_writer = cv2.VideoWriter(
             str(screen_out_raw),
             cv2.VideoWriter_fourcc(*"mp4v"),
-            DEFAULT_SCREEN_FPS,
-            (screen_video._width, screen_video._height)
+            screen_video.fps,
+            (screen_video.width, screen_video.height)
         )
 
         try:
