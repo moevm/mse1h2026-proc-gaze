@@ -185,25 +185,20 @@ class Tracker:
         camera_out_raw, screen_out_raw = out_dir / "camera_raw.mp4", out_dir / "screen_raw.mp4"
         camera_out, screen_out = out_dir / "camera.mp4", out_dir / "screen.mp4"
 
-        logger.info("Re-encoding input videos...")
-        try:
-            camera_writer = cv2.VideoWriter(
-                str(camera_out_raw),
-                cv2.VideoWriter_fourcc(*"mp4v"),
-                camera_video.fps,
-                (camera_video._width, camera_video._height)
-            )
-            screen_writer = cv2.VideoWriter(
-                str(screen_out_raw),
-                cv2.VideoWriter_fourcc(*"mp4v"),
-                DEFAULT_SCREEN_FPS,
-                (screen_video._width, screen_video._height)
-            )
-        except Exception as e:
-            logger.info("Failed to re-encode input videos.")
-            raise e
+        camera_writer = cv2.VideoWriter(
+            str(camera_out_raw),
+            cv2.VideoWriter_fourcc(*"mp4v"),
+            camera_video.fps,
+            (camera_video.width, camera_video.height)
+        )
+        screen_writer = cv2.VideoWriter(
+            str(screen_out_raw),
+            cv2.VideoWriter_fourcc(*"mp4v"),
+            screen_video.fps,
+            (screen_video.width, screen_video.height)
+        )
         
-        logger.info("Input videos were re-encoded successfully. Processing frames...")
+        logger.info("Processing frames...")
         try:
             frames_cnt = min(len(camera_video), len(screen_video))
             for i, (camera_frame, screen_frame) in enumerate(zip(camera_video, screen_video)):
