@@ -5,12 +5,12 @@ from .gaze_mapper import GazeMapper
 import os
 import ffmpeg
 from pathlib import Path
-from typing import Optional, List, Any, Dict
+from typing import Optional, List, Any, Dict, Tuple
 import numpy as np
 import cv2
 import torch
 
-from src.constants import JOB_STATUS_DONE, JOB_STATUS_FAILED, JOB_STATUS_IN_PROGRESS, DEFAULT_SCREEN_FPS
+from src.constants import JobStatus, DEFAULT_SCREEN_FPS
 from src.video import Video
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -205,8 +205,6 @@ class Tracker:
             self.convert_codec(input_path=camera_out_raw, output_path=camera_out)
             self.convert_codec(input_path=screen_out_raw, output_path=screen_out)
         finally:
-            # TODO: пока оставляем сырые видосы, нужна более аккуратная постобработка и проверка
-            pass
             camera_out_raw.unlink(missing_ok=True)
             screen_out_raw.unlink(missing_ok=True)
 
