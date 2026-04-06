@@ -10,11 +10,7 @@ import numpy as np
 import cv2
 import torch
 
-<<<<<<< feature/38-open_gaze_estimation_model
 from src.constants import JobStatus, DEFAULT_SCREEN_FPS
-=======
-from src.constants import JOB_STATUS_DONE, JOB_STATUS_FAILED, JOB_STATUS_IN_PROGRESS, DEFAULT_FPS
->>>>>>> main
 from src.video import Video
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
