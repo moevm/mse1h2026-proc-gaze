@@ -4,6 +4,7 @@ from src.gaze_mapper import *
 
 import os
 import ffmpeg
+import logging
 from pathlib import Path
 from typing import Any, Optional, Dict, List
 
@@ -138,6 +139,13 @@ class Tracker:
             print(e.stderr.decode("utf-8", errors="replace") if e.stderr else str(e))
             raise
 
+    _LAST_PROCESS_ID = 0
+
+    @staticmethod
+    def gen_unique_process_id():
+        Tracker._LAST_PROCESS_ID += 1
+        return Tracker._LAST_PROCESS_ID
+
     def process_video(
             self,
             screen_video: Video,
@@ -156,6 +164,12 @@ class Tracker:
             - camera.mp4: обработанное видео с вебкамеры (bbox глаз, вектор взгляда).
             - screen.mp4: обработанное видео экрана (точка проекции взгляда).
         """
+
+        logger = logging.getLogger(f"process_video {Tracker.gen_unique_process_id()}")
+        logger.info("Started processing videos:")
+        logger.info(f"Screen: {screen_video.info}")
+        logger.info(f"Camera: {camera_video.info}")
+
         if out_dir is None:
             return
 
@@ -171,21 +185,28 @@ class Tracker:
         camera_out_raw, screen_out_raw = out_dir / "camera_raw.mp4", out_dir / "screen_raw.mp4"
         camera_out, screen_out = out_dir / "camera.mp4", out_dir / "screen.mp4"
 
-        camera_writer = cv2.VideoWriter(
-            str(camera_out_raw),
-            cv2.VideoWriter_fourcc(*"mp4v"),
-            camera_video.fps,
-            (camera_video._width, camera_video._height)
-        )
-        screen_writer = cv2.VideoWriter(
-            str(screen_out_raw),
-            cv2.VideoWriter_fourcc(*"mp4v"),
-            DEFAULT_SCREEN_FPS,
-            (screen_video._width, screen_video._height)
-        )
-
+        logger.info("Re-encoding input videos...")
         try:
-            for camera_frame, screen_frame in zip(camera_video, screen_video):
+            camera_writer = cv2.VideoWriter(
+                str(camera_out_raw),
+                cv2.VideoWriter_fourcc(*"mp4v"),
+                camera_video.fps,
+                (camera_video._width, camera_video._height)
+            )
+            screen_writer = cv2.VideoWriter(
+                str(screen_out_raw),
+                cv2.VideoWriter_fourcc(*"mp4v"),
+                DEFAULT_SCREEN_FPS,
+                (screen_video._width, screen_video._height)
+            )
+        except Exception as e:
+            logger.info("Failed to re-encode input videos.")
+            raise e
+        
+        logger.info("Input videos were re-encoded successfully. Processing frames...")
+        try:
+            frames_cnt = min(len(camera_video), len(screen_video))
+            for i, (camera_frame, screen_frame) in enumerate(zip(camera_video, screen_video)):
                 gaze_vecs, pupils, offsets, eye_bboxes = self.gaze_estimator.estimate(camera_frame)
                 gaze_info = (gaze_vecs, pupils, offsets, eye_bboxes)
                 processed_camera = self.process_camera_frame(camera_frame, gaze_info,  draw_bbox=True)
@@ -193,18 +214,30 @@ class Tracker:
 
                 camera_writer.write(processed_camera)
                 screen_writer.write(processed_screen)
+                
+                if i % ((frames_cnt + 9) // 10) == 0:
+                    logger.debug(f"Progress: {int(i / frames_cnt * 100)}%")
+        except Exception as e:
+            logger.info("Failed to process frames.")
+            raise e
         finally:
             camera_writer.release()
             screen_writer.release()
             
+        logger.info("Frames were processed sucessfully. Re-encoding output videos...")
         try:
             self.convert_codec(input_path=camera_out_raw, output_path=camera_out)
             self.convert_codec(input_path=screen_out_raw, output_path=screen_out)
+        except Exception as e:
+            logger.info("Failed to re-encode output videos.")
+            raise e
         finally:
             # TODO: пока оставляем сырые видосы, нужна более аккуратная постобработка и проверка
             pass
             camera_out_raw.unlink(missing_ok=True)
             screen_out_raw.unlink(missing_ok=True)
+        
+        logger.info("Output videos were re-encoded successfully. process_video is done.")
 
     def process_job(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -231,6 +264,7 @@ class Tracker:
                 "path_processed_screen": "results/uuid/screen.mp4"
             }
         """
+        logging.info(f"Received job with payload: {payload}")
         recording_id = str(payload["recording_id"])
 
         screen_video_path = os.path.join("/data", payload.get("path_screen"))

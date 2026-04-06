@@ -104,6 +104,9 @@ class Video:
         for _, _, frame in self.iter_frames(start=0):
             yield frame
 
+    def __len__(self) -> int:
+        return self._frame_count
+
     def close(self) -> None:
         """Release the underlying video capture resource."""
         if self._video is not None:
