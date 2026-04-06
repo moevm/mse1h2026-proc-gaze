@@ -10,7 +10,7 @@ import numpy as np
 import cv2
 import torch
 
-from src.constants import JobStatus, DEFAULT_SCREEN_FPS
+from src.constants import JobStatus, DEFAULT_FPS
 from src.video import Video
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -67,7 +67,7 @@ class Tracker:
 
         out = cv2.VideoWriter('output.mp4', cv2.VideoWriter_fourcc(*'mp4v'), cam.get(cv2.CAP_PROP_FPS), (frame_width, frame_height))
         while True:
-            ret, frame = cam.read()
+            _, frame = cam.read()
 
             new_frame = self.process_camera_frame(frame)
 
