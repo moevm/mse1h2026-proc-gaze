@@ -8,7 +8,7 @@ import logging
 from pathlib import Path
 from typing import Any, Optional, Dict, List
 
-from src.constants import JOB_STATUS_DONE, JOB_STATUS_FAILED, JOB_STATUS_IN_PROGRESS, DEFAULT_SCREEN_FPS
+from src.constants import JOB_STATUS_DONE, JOB_STATUS_FAILED, JOB_STATUS_IN_PROGRESS, DEFAULT_FPS
 from src.video import Video
 
 
@@ -185,7 +185,23 @@ class Tracker:
         camera_out_raw, screen_out_raw = out_dir / "camera_raw.mp4", out_dir / "screen_raw.mp4"
         camera_out, screen_out = out_dir / "camera.mp4", out_dir / "screen.mp4"
 
+<<<<<<< feature/118-tracker-logs
         logger.info("Re-encoding input videos...")
+=======
+        camera_writer = cv2.VideoWriter(
+            str(camera_out_raw),
+            cv2.VideoWriter_fourcc(*"mp4v"),
+            camera_video.fps,
+            (camera_video.width, camera_video.height)
+        )
+        screen_writer = cv2.VideoWriter(
+            str(screen_out_raw),
+            cv2.VideoWriter_fourcc(*"mp4v"),
+            screen_video.fps,
+            (screen_video.width, screen_video.height)
+        )
+
+>>>>>>> main
         try:
             camera_writer = cv2.VideoWriter(
                 str(camera_out_raw),
