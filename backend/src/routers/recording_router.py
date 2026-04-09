@@ -4,6 +4,7 @@ from fastapi import APIRouter, status, UploadFile, Form, File
 
 from faststream.rabbit import RabbitQueue
 
+from src.schemas.calibration_schema import CalibrationData, CalibrationRead
 from src.schemas.process_request_schema import ProcessRequest
 from src.schemas.recording_schema import RecordingRead
 from src.crud import recording_crud
@@ -25,6 +26,21 @@ async def handle_upload_files(
     process_request = ProcessRequest.model_validate(recording)
     await broker.publish(process_request, jobs_queue)
     return recording
+
+
+@router.post("/calibration", response_model=CalibrationRead)
+async def handle_calibration(
+        calibration_data: CalibrationData = Form(...),
+        webcam: UploadFile = File(...),
+        screencast: UploadFile = File(...)
+):
+    webcam_path, screencast_path = await recording_crud.save_calibration_files(webcam, screencast)
+
+    await broker.publish(
+        CalibrationRead(webcam_path=webcam_path,
+                        screencast_path=screencast_path,
+                        calibration_data=calibration_data), jobs_queue)
+
 
 
 @router.get("/screen/{id}")

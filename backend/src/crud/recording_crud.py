@@ -116,6 +116,18 @@ async def create_recording(student_id: str,
     await session.refresh(recording)
     return RecordingRead.model_validate(recording)
 
+async def save_calibration_files(
+    webcam: UploadFile,
+    screencast: UploadFile
+):
+    now = datetime.now()
+    calibration = uuid.uuid4()
+    webcam_path = f"{now}/{calibration}_webcam{Path(webcam.filename).suffix}"
+    screencast_path = f"{now}/{calibration}_screencast{Path(screencast.filename).suffix}"
+    await file_storage.save_upload_file(webcam, webcam_path)
+    await file_storage.save_upload_file(screencast, screencast_path)
+    return webcam_path, screencast_path
+
 
 @connection
 async def mark_recording_done(
