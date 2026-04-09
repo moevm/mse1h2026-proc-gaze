@@ -1,5 +1,6 @@
 <template>
   <div class="calibration-view">
+    <div class="back-button" @click="goToMain">Вернуться на главную</div>
 
     <div class="content-card">
       <h1 class="title">Калибровка взгляда</h1>
@@ -254,6 +255,8 @@ const uploadCalibration = async () => {
         screenVideoBlob.value,
         calibrationData.value
     )
+
+    goToMain()
   } catch (error) {
     console.error('Error with upload calibration:', error)
   } finally {
@@ -277,6 +280,10 @@ onBeforeUnmount(() => {
   if (cameraVideoUrl.value) URL.revokeObjectURL(cameraVideoUrl.value)
   if (screenVideoUrl.value) URL.revokeObjectURL(screenVideoUrl.value)
 })
+
+const goToMain = () => {
+  router.push({ name: 'MainView' })
+}
 </script>
 
 <style scoped>
