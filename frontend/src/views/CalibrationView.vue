@@ -43,6 +43,11 @@
                 v-if="cameraVideoUrl"
                 ref="cameraPlayer"
                 :src="cameraVideoUrl"
+                @play="onPlay('camera')"
+                @pause="onPause('camera')"
+                @seek="handleCameraSeek"
+                @duration="handleCameraDuration"
+                @timeupdate="handleCameraTimeUpdate"
             />
             <div v-else class="loading-placeholder">Видео камеры не доступно</div>
           </div>
@@ -52,6 +57,11 @@
                 v-if="screenVideoUrl"
                 ref="screenPlayer"
                 :src="screenVideoUrl"
+                @play="onPlay('screen')"
+                @pause="onPause('screen')"
+                @seek="handleScreenSeek"
+                @duration="handleScreenDuration"
+                @timeupdate="handleScreenTimeUpdate"
             />
             <div v-else class="loading-placeholder">Видео экрана не доступно</div>
           </div>
@@ -119,6 +129,22 @@ const circles = ref([])
 
 const recordingStartTime = ref(null)
 
+const cameraPlayer = ref(null)
+const screenPlayer = ref(null)
+
+const cameraDuration = ref(null)
+const screenDuration = ref(null)
+const cameraCurrentTime = ref(0)
+const screenCurrentTime = ref(0)
+const cameraIsPlaying = ref(false)
+const screenIsPlaying = ref(false)
+
+const isSyncing = ref(false)
+const cameraProgrammaticSeek = ref(false)
+const screenProgrammaticSeek = ref(false)
+const EPS = 0.1
+
+
 const calibrationData = ref({
   windowWidth: 0,
   windowHeight: 0,
@@ -129,8 +155,6 @@ const currentCircleIndex = ref(0)
 
 const isProcessingClick = ref(false)
 
-const cameraPlayer = ref(null)
-const screenPlayer = ref(null)
 
 
 const canSubmit = computed(() => {
@@ -283,6 +307,92 @@ onBeforeUnmount(() => {
 
 const goToMain = () => {
   router.push({ name: 'MainView' })
+}
+
+
+const handleCameraDuration = (dur) => { cameraDuration.value = dur }
+const handleCameraTimeUpdate = (time) => { cameraCurrentTime.value = time }
+const handleScreenDuration = (dur) => { screenDuration.value = dur }
+const handleScreenTimeUpdate = (time) => { screenCurrentTime.value = time }
+
+const handleCameraSeek = (time) => {
+  if (cameraProgrammaticSeek.value) {
+    cameraProgrammaticSeek.value = false
+    return
+  }
+  if (screenPlayer.value && screenDuration.value !== null) {
+    screenProgrammaticSeek.value = true
+    const newTime = Math.min(time, screenDuration.value)
+    screenPlayer.value.setCurrentTime(newTime)
+    if (screenIsPlaying.value) {
+      isSyncing.value = true
+      screenPlayer.value.pause()
+      isSyncing.value = false
+    }
+  }
+}
+
+const handleScreenSeek = (time) => {
+  if (screenProgrammaticSeek.value) {
+    screenProgrammaticSeek.value = false
+    return
+  }
+  if (cameraPlayer.value && cameraDuration.value !== null) {
+    cameraProgrammaticSeek.value = true
+    const newTime = Math.min(time, cameraDuration.value)
+    cameraPlayer.value.setCurrentTime(newTime)
+    if (cameraIsPlaying.value) {
+      isSyncing.value = true
+      cameraPlayer.value.pause()
+      isSyncing.value = false
+    }
+  }
+}
+
+const onPlay = (source) => {
+  if (isSyncing.value) return
+
+  if (source === 'camera') {
+    cameraIsPlaying.value = true
+    if (screenPlayer.value && screenDuration.value !== null && !screenIsPlaying.value) {
+      const isScreenAtEnd = screenCurrentTime.value >= screenDuration.value - EPS
+      if (!isScreenAtEnd) {
+        isSyncing.value = true
+        screenPlayer.value.play()
+        isSyncing.value = false
+      }
+    }
+  } else { // screen
+    screenIsPlaying.value = true
+    if (cameraPlayer.value && cameraDuration.value !== null && !cameraIsPlaying.value) {
+      const isCameraAtEnd = cameraCurrentTime.value >= cameraDuration.value - EPS
+      if (!isCameraAtEnd) {
+        isSyncing.value = true
+        cameraPlayer.value.play()
+        isSyncing.value = false
+      }
+    }
+  }
+}
+
+const onPause = (source) => {
+  if (isSyncing.value) return
+
+  if (source === 'camera') {
+    cameraIsPlaying.value = false
+    if (screenPlayer.value && screenIsPlaying.value) {
+      isSyncing.value = true
+      screenPlayer.value.pause()
+      isSyncing.value = false
+    }
+  } else {
+    screenIsPlaying.value = false
+    if (cameraPlayer.value && cameraIsPlaying.value) {
+      isSyncing.value = true
+      cameraPlayer.value.pause()
+      isSyncing.value = false
+    }
+  }
 }
 </script>
 
