@@ -33,13 +33,8 @@ async def get_recordings(session: AsyncSession):
 
 
 @connection
-async def delete_recording(id: str, session: AsyncSession):
-    try:
-        recording_uuid = uuid.UUID(id)
-    except ValueError:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                            detail="Invalid recording_id format. Expected UUID.")
-    recording = (await session.execute(select(Recording).where(Recording.recording_id == recording_uuid))).scalar_one_or_none()
+async def delete_recording(id: uuid.UUID, session: AsyncSession):
+    recording = (await session.execute(select(Recording).where(Recording.recording_id == id))).scalar_one_or_none()
     if not recording:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Recording not found")
     await session.delete(recording)
@@ -47,38 +42,33 @@ async def delete_recording(id: str, session: AsyncSession):
 
 
 @connection
-async def get_recording(id: str, session: AsyncSession):
-    try:
-        recording_uuid = uuid.UUID(id)
-    except ValueError:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                            detail="Invalid recording_id format. Expected UUID.")
-    recording = await session.execute(select(Recording).where(Recording.recording_id == recording_uuid))
+async def get_recording(id: uuid.UUID, session: AsyncSession):
+    recording = await session.execute(select(Recording).where(Recording.recording_id == id))
     recording = recording.scalar_one_or_none()
     if recording is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail=f"recording not found with uuid: {recording_uuid}")
+                            detail=f"recording not found with uuid: {id}")
     return recording
 
 
-async def get_webcam(id: str):
+async def get_webcam(id: uuid.UUID):
     recording = await get_recording(id)
     return await file_storage.get_file(recording.path_webcam)
 
 
-async def get_screen(id: str):
+async def get_screen(id: uuid.UUID):
     recording = await get_recording(id)
     return await file_storage.get_file(recording.path_screen)
 
 
-async def get_processed_webcam(id: str):
+async def get_processed_webcam(id: uuid.UUID):
     recording = await get_recording(id)
     if not recording.path_processed_webcam:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Processed webcam video not ready yet")
     return await file_storage.get_file(recording.path_processed_webcam)
 
 
-async def get_processed_screen(id: str):
+async def get_processed_screen(id: uuid.UUID):
     recording = await get_recording(id)
     if not recording.path_processed_screen:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Processed screen video not ready yet")
@@ -86,7 +76,7 @@ async def get_processed_screen(id: str):
 
 
 @connection
-async def create_recording(student_id: str,
+async def create_recording(student_id: uuid.UUID,
                            webcam: UploadFile,
                            screencast: UploadFile, session: AsyncSession):
     if webcam is None or screencast is None:
@@ -95,21 +85,16 @@ async def create_recording(student_id: str,
 
     logging.info(
         f"student_id {student_id}, webcam type: {webcam.content_type}, screencast type: {screencast.content_type}")
-    try:
-        student_uuid = uuid.UUID(student_id)
-    except ValueError:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                             detail="Invalid student_id format. Expected UUID.")
+
     now = datetime.now()
-    recording_uuid = uuid.uuid4()
-    webcam_path = f"{now}/{recording_uuid}_webcam{Path(webcam.filename).suffix}"
-    screencast_path = f"{now}/{recording_uuid}_screencast{Path(screencast.filename).suffix}"
+    webcam_path = f"{student_id}/recording/{now}/webcam-{Path(webcam.filename).suffix}"
+    screencast_path = f"{student_id}/recording/{now}/screencast-{Path(screencast.filename).suffix}"
     await file_storage.save_upload_file(webcam, webcam_path)
     await file_storage.save_upload_file(screencast, screencast_path)
     recording = Recording(
-        student_id=student_uuid,
-        path_webcam=str(webcam_path),
-        path_screen=str(screencast_path)
+        student_id=student_id,
+        path_webcam=webcam_path,
+        path_screen=screencast_path
     )
     session.add(recording)
     await session.commit()
@@ -117,13 +102,13 @@ async def create_recording(student_id: str,
     return RecordingRead.model_validate(recording)
 
 async def save_calibration_files(
+    student_id: uuid.UUID,
     webcam: UploadFile,
     screencast: UploadFile
 ):
     now = datetime.now()
-    calibration = uuid.uuid4()
-    webcam_path = f"{now}/{calibration}_webcam{Path(webcam.filename).suffix}"
-    screencast_path = f"{now}/{calibration}_screencast{Path(screencast.filename).suffix}"
+    webcam_path = f"{student_id}/calibration/{now}/webcam-{Path(webcam.filename).suffix}"
+    screencast_path = f"{student_id}/calibration/{now}/screencast-{Path(screencast.filename).suffix}"
     await file_storage.save_upload_file(webcam, webcam_path)
     await file_storage.save_upload_file(screencast, screencast_path)
     return webcam_path, screencast_path

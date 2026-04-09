@@ -1,3 +1,4 @@
+import uuid
 from typing import List
 
 from pydantic import BaseModel, Field
@@ -19,6 +20,7 @@ class CalibrationData(BaseModel):
 
 
 class CalibrationRead(BaseModel):
+    student_id: uuid.UUID = Field(..., description="UUID студента")
     webcam_path: str = Field(..., description="Путь к видеокамере")
     screencast_path: str = Field(..., description="Путь к скринкасту")
     calibration_data: CalibrationData = Field(..., description="Данные калибровки")
