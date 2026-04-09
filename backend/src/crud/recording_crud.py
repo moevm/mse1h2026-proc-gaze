@@ -43,6 +43,7 @@ async def delete_recording(id: uuid.UUID, session: AsyncSession):
 
 @connection
 async def get_recording(id: uuid.UUID, session: AsyncSession):
+    print(id)
     recording = await session.execute(select(Recording).where(Recording.recording_id == id))
     recording = recording.scalar_one_or_none()
     if recording is None:

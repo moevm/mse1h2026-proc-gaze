@@ -10,17 +10,17 @@ from src.schemas.process_request_schema import ProcessRequest
 from src.schemas.recording_schema import RecordingRead
 from src.crud import recording_crud
 from src.util.broker import broker
-from src.util.config import AMQP_QUEUE, AMQP_CALIBRATION_RESULT_QUEUE
+from src.util.config import AMQP_QUEUE, AMQP_CALIBRATION_QUEUE
 
 jobs_queue = RabbitQueue(AMQP_QUEUE, durable=True)
-jobs_calibration_queue = RabbitQueue(AMQP_CALIBRATION_RESULT_QUEUE, durable=True)
+jobs_calibration_queue = RabbitQueue(AMQP_CALIBRATION_QUEUE, durable=True)
 
 router = APIRouter(prefix="/recording", tags=["recording"])
 
 
 @router.post("/upload", response_model=RecordingRead)
 async def handle_upload_files(
-        student_id: uuid = Form(...),
+        student_id: uuid.UUID = Form(...),
         webcam: UploadFile = File(...),
         screencast: UploadFile = File(...)
 ):
@@ -32,7 +32,7 @@ async def handle_upload_files(
 
 @router.post("/calibration", response_model=CalibrationRead)
 async def handle_calibration(
-        student_id: uuid = Form(...),
+        student_id: uuid.UUID = Form(...),
         calibration_data: CalibrationData = Form(...),
         webcam: UploadFile = File(...),
         screencast: UploadFile = File(...)

@@ -41,6 +41,8 @@ services:
       AMQP_URL: ${AMQP_URL}
       AMQP_QUEUE: ${AMQP_QUEUE}
       AMQP_RESULT_QUEUE: ${AMQP_RESULT_QUEUE}
+      AMQP_CALIBRATION_QUEUE: ${AMQP_CALIBRATION_QUEUE}
+      AMQP_CALIBRATION_RESULT_QUEUE: ${AMQP_CALIBRATION_RESULT_QUEUE}
     volumes:
       - shared_data:/data
     depends_on:
