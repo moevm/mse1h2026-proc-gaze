@@ -145,11 +145,7 @@ const screenProgrammaticSeek = ref(false)
 const EPS = 0.1
 
 
-const calibrationData = ref({
-  windowWidth: 0,
-  windowHeight: 0,
-  clicks: []
-})
+const calibrationData = ref()
 
 const currentCircleIndex = ref(0)
 
@@ -239,12 +235,12 @@ const startRecording = async () => {
     const screenY = window.screenY ?? window.screenTop ?? 0
 
     calibrationData.value = {
-      windowWidth: winW,
-      windowHeight: winH,
-      screenWidth: screenW,
-      screenHeight: screenH,
-      windowScreenX: screenX,
-      windowScreenY: screenY,
+      window_width: winW,
+      window_height: winH,
+      screen_width: screenW,
+      screen_height: screenH,
+      window_screen_x: screenX,
+      window_screen_y: screenY,
       clicks: []
     }
 

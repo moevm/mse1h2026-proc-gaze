@@ -3,12 +3,12 @@ import type { ApiResponse } from '../config'
 import {T} from "vue-router/dist/index-DFCq6eJK";
 
 interface CalibrationData {
-    windowWidth: number;
-    windowHeight: number;
-    screenWidth: number;
-    screenHeight: number;
-    windowScreenX: number;
-    windowScreenY: number;
+    window_width: number;
+    window_height: number;
+    screen_width: number;
+    screen_height: number;
+    window_screen_x: number;
+    window_screen_y: number;
     clicks: Array<{ time: number; x: number; y: number }>;
 }
 
