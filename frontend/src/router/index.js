@@ -20,6 +20,12 @@ const router = createRouter({
             name: 'ResultView',
             component: () => import('@/views/ResultView.vue'),
             meta: { requiresAuth: true, requiresVerification: true }
+        },
+        {
+            path: '/calibration',
+            name: 'CalibrationView',
+            component: () => import('@/views/CalibrationView.vue'),
+            meta: { requiresAuth: true, requiresVerification: true }
         }
     ],
 })
