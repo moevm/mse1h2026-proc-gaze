@@ -171,8 +171,8 @@ const onCircleClick = (circle) => {
 
   calibrationData.value.clicks.push({
     time: elapsedSeconds,
-    x: circle.x + 20,
-    y: circle.y + 20
+    x: circle.x + 40,
+    y: circle.y + 40
   })
 
   circle.active = false
@@ -233,15 +233,23 @@ const startRecording = async () => {
 
     const winW = window.innerWidth
     const winH = window.innerHeight
+    const screenW = window.screen.width
+    const screenH = window.screen.height
+    const screenX = window.screenX ?? window.screenLeft ?? 0
+    const screenY = window.screenY ?? window.screenTop ?? 0
 
     calibrationData.value = {
       windowWidth: winW,
       windowHeight: winH,
+      screenWidth: screenW,
+      screenHeight: screenH,
+      windowScreenX: screenX,
+      windowScreenY: screenY,
       clicks: []
     }
 
-    const padding = 20
-    const circleSize = 40
+    const padding = 40
+    const circleSize = 60
     circles.value = [
       { id: 1, x: padding, y: padding, active: true },
       { id: 2, x: winW - circleSize - padding, y: padding, active: false },
@@ -603,8 +611,8 @@ const onPause = (source) => {
 
 .calibration-circle {
   position: absolute;
-  width: 40px;
-  height: 40px;
+  width: 60px;
+  height: 60px;
   border-radius: 50%;
   background-color: red;
   border: 3px solid white;

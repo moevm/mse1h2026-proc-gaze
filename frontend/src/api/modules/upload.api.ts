@@ -5,6 +5,10 @@ import {T} from "vue-router/dist/index-DFCq6eJK";
 interface CalibrationData {
     windowWidth: number;
     windowHeight: number;
+    screenWidth: number;
+    screenHeight: number;
+    windowScreenX: number;
+    windowScreenY: number;
     clicks: Array<{ time: number; x: number; y: number }>;
 }
 
