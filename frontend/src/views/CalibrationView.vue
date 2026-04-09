@@ -88,6 +88,9 @@
 import { ref, computed, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import VideoPlayer from '@/components/VideoPlayer.vue'
+import { uploadApi } from '@/api'
+
+const router = useRouter()
 
 const stage = ref('description')
 
@@ -245,7 +248,12 @@ const uploadCalibration = async () => {
 
   isUploading.value = true
   try {
-  //   API query
+    await uploadApi.uploadCalibration(
+        studentUuid.value,
+        cameraVideoBlob.value,
+        screenVideoBlob.value,
+        calibrationData.value
+    )
   } catch (error) {
     console.error('Error with upload calibration:', error)
   } finally {
