@@ -4,11 +4,16 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.consumers import suspicious_consumer  # noqa: F401
+from src.consumers import suspicious_consumer, calibration_consumer
 from src.routers import recording_router, notification_router, suspicious_router, student_router
 from src.util.broker import broker
 from src.util.config import RMQ_URL
 from src.util.database import engine
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 
 
 @asynccontextmanager

@@ -2,10 +2,10 @@ import uuid
 from datetime import datetime, timezone
 from enum import Enum as PyEnum
 
-from sqlalchemy import Column, String, DateTime, Float, Integer, ForeignKey, Enum, Time, Boolean, TIMESTAMP, MetaData
+from sqlalchemy import Column, String, DateTime, Float, Integer, ForeignKey, Enum, Time, Boolean, TIMESTAMP, MetaData, \
+    ARRAY, Double
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.asyncio import AsyncAttrs
-from pgvector.sqlalchemy import Vector
 from sqlalchemy.orm import relationship, DeclarativeBase
 
 metadata = MetaData(schema="public")
@@ -131,6 +131,6 @@ class Notification(Base):
 class CalibrationResult(Base):
     __tablename__ = "calibration_result"
     student_id = Column(UUID(as_uuid=True), ForeignKey("student.student_id", ondelete="CASCADE"), primary_key=True)
-    result = Column(Vector(3), nullable=False)
+    result = Column(ARRAY(Double), nullable=False)
     updated_date = Column(TIMESTAMP(timezone=True), default=datetime.now(timezone.utc),
                           onupdate=datetime.now(timezone.utc))

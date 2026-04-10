@@ -15,8 +15,8 @@ class CalibrationData(BaseModel):
     window_height: int = Field(..., description="Высота окна браузера")
     screen_width: int = Field(..., description="Ширина всего экрана")
     screen_height: int = Field(..., description="Высота всего экрана")
-    window_screen_x: int = Field(..., description="Положение окна браузера относительно левого верхнего края экрана по оси X")
-    window_screen_y: int = Field(..., description="Положение окна браузера относительно левого верхнего края экрана по оси Y")
+    window_screen_x: int = Field(..., description="Положение окна браузера относительно левого верхнего края экрана по оси Y")
+    window_screen_y: int = Field(..., description="Положение окна браузера относительно левого верхнего края экрана по оси X")
     clicks: List[Click] = Field(..., description="Данные кликов")
 
 

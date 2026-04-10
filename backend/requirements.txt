@@ -9,4 +9,3 @@ aiofiles==25.1.0
 aio-pika==9.6.1
 faststream==0.6.7
 alembic==1.18.4
-pgvector==0.4.2

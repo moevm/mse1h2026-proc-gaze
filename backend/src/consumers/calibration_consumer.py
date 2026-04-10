@@ -1,13 +1,9 @@
 import logging
-from datetime import datetime, timezone
 
 from faststream.rabbit import RabbitQueue
 
-from src.models import NotificationType
-from src.schemas.notification_schema import NotificationCreate
-from src.crud import notification_crud
-from src.schemas.calibration_schema import CalibrationResultRead
 from src.crud import calibration_crud
+from src.schemas.calibration_schema import CalibrationResultRead
 from src.util.broker import broker
 from src.util.config import AMQP_CALIBRATION_RESULT_QUEUE
 

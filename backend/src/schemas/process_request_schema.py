@@ -3,7 +3,7 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
-from schemas.calibration_schema import CalibrationResultRead
+from src.schemas.calibration_schema import CalibrationResultRead
 
 
 class ProcessRequest(BaseModel):
