@@ -23,17 +23,12 @@ async def get_notifications(session: AsyncSession):
 
 
 @connection
-async def delete_notification(id: str, session: AsyncSession):
-    try:
-        notification_uuid = uuid.UUID(id)
-    except ValueError:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                            detail="Invalid notification_id format. Expected UUID.")
-    response = await session.execute(select(Notification).where(Notification.notification_id == notification_uuid))
+async def delete_notification(id: uuid.UUID, session: AsyncSession):
+    response = await session.execute(select(Notification).where(Notification.notification_id == id))
     notification = response.scalar_one_or_none()
     if notification is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail=f"notification not found with uuid: {notification_uuid}")
+                            detail=f"notification not found with uuid: {id}")
     await session.delete(notification)
     await session.commit()
 

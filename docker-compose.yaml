@@ -74,14 +74,17 @@ services:
         condition: service_healthy
 
   frontend:
-      build:
-        context: ./frontend
-        dockerfile: Dockerfile
-      image: tracking-frontend:latest
-      ports:
-        - "80:80"
-      depends_on:
-        - backend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL}
+    image: tracking-frontend:latest
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
 
 volumes:
   shared_data:

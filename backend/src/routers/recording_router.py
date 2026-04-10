@@ -2,13 +2,13 @@ import uuid
 from typing import List
 
 from fastapi import APIRouter, status, UploadFile, Form, File
-
 from faststream.rabbit import RabbitQueue
 
+from src.crud import calibration_crud
+from src.crud import recording_crud
 from src.schemas.calibration_schema import CalibrationData, CalibrationRead
 from src.schemas.process_request_schema import ProcessRequest
 from src.schemas.recording_schema import RecordingRead
-from src.crud import recording_crud
 from src.util.broker import broker
 from src.util.config import AMQP_QUEUE, AMQP_CALIBRATION_QUEUE
 
@@ -21,11 +21,20 @@ router = APIRouter(prefix="/recording", tags=["recording"])
 @router.post("/upload", response_model=RecordingRead)
 async def handle_upload_files(
         student_id: uuid.UUID = Form(...),
+        with_calibration: bool = Form(...),
         webcam: UploadFile = File(...),
-        screencast: UploadFile = File(...)
+        screencast: UploadFile = File(...),
 ):
     recording = await recording_crud.create_recording(student_id, webcam, screencast)
-    process_request = ProcessRequest.model_validate(recording)
+    calibration_result = None
+    if with_calibration:
+        calibration_result = await calibration_crud.get_calibration_result(student_id)
+    process_request = ProcessRequest(
+        recording_id=recording.recording_id,
+        path_webcam=recording.path_webcam,
+        path_screen=recording.path_screen,
+        calibration_result=calibration_result
+    )
     await broker.publish(process_request, jobs_queue)
     return recording
 

@@ -5,6 +5,7 @@ from enum import Enum as PyEnum
 from sqlalchemy import Column, String, DateTime, Float, Integer, ForeignKey, Enum, Time, Boolean, TIMESTAMP, MetaData
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.asyncio import AsyncAttrs
+from pgvector.sqlalchemy import Vector
 from sqlalchemy.orm import relationship, DeclarativeBase
 
 metadata = MetaData(schema="public")
@@ -125,3 +126,11 @@ class Notification(Base):
             "sent_date": self.sent_date.isoformat() if self.sent_date else None,
             "type": self.type.value if self.type else None
         }
+
+
+class CalibrationResult(Base):
+    __tablename__ = "calibration_result"
+    student_id = Column(UUID(as_uuid=True), ForeignKey("student.student_id", ondelete="CASCADE"), primary_key=True)
+    result = Column(Vector(3), nullable=False)
+    updated_date = Column(TIMESTAMP(timezone=True), default=datetime.now(timezone.utc),
+                          onupdate=datetime.now(timezone.utc))
