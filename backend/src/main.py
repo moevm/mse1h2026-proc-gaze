@@ -10,6 +10,7 @@ from src.consumers import suspicious_consumer  # noqa: F401
 from src.util.broker import broker
 from src.util.config import RMQ_URL
 from src.util.database import engine
+from fastapi.middleware.cors import CORSMiddleware
 
 
 @asynccontextmanager
@@ -26,6 +27,14 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     lifespan=lifespan
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:80"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 app.include_router(recording_router.router)
