@@ -8,7 +8,7 @@
       <div v-if="stage === 'description'" class="description-stage">
         <p class="description-text">
           Для калибровки потребуется доступ к вашей камере и экрану.
-          После начала записи в углах экрана будут последовательно появляться красные круги.
+          После начала записи на экране будут последовательно появляться красные круги.
           Наведите курсор на круг и нажмите левую кнопку мыши.
           После нажатия на последний круг запись автоматически остановится.
         </p>
@@ -19,7 +19,7 @@
 
       <div v-else-if="stage === 'recording'" class="recording-stage">
         <p class="recording-hint">
-          Идёт запись... Нажимайте на красные круги в углах экрана.
+          Идёт запись... Нажимайте на красные круги на экране.
         </p>
         <Teleport to="body">
           <div class="calibration-overlay">
@@ -244,15 +244,39 @@ const startRecording = async () => {
       clicks: []
     }
 
-    const padding = 40
     const circleSize = 60
-    circles.value = [
-      { id: 1, x: padding, y: padding, active: true },
-      { id: 2, x: winW - circleSize - padding, y: padding, active: false },
-      { id: 3, x: padding, y: winH - circleSize - padding, active: false },
-      { id: 4, x: winW - circleSize - padding, y: winH - circleSize - padding, active: false }
-    ]
+    const padding = 40
 
+    const cols = 5
+    const rows = 5
+    const availableWidth = winW - 2 * padding
+    const availableHeight = winH - 2 * padding
+    const stepX = availableWidth / (cols - 1)
+    const stepY = availableHeight / (rows - 1)
+
+    const newCircles = []
+    let idCounter = 1
+
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        if ((row + col) % 2 === 0) {
+          const x = padding + col * stepX - circleSize / 2
+          const y = padding + row * stepY - circleSize / 2
+          newCircles.push({
+            id: idCounter++,
+            x: Math.round(x),
+            y: Math.round(y),
+            active: false
+          })
+        }
+      }
+    }
+
+    if (newCircles.length > 0) {
+      newCircles[0].active = true
+    }
+
+    circles.value = newCircles
     currentCircleIndex.value = 0
     stage.value = 'recording'
   } catch (error) {

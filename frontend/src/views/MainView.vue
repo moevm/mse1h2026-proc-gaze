@@ -110,7 +110,8 @@ onMounted(async () => {
   box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
 }
 
-.upload-btn:hover {
+.upload-btn:hover,
+.calibration-btn:hover {
   background-color: #0056b3;
   transform: scale(1.02);
 }
