@@ -21,8 +21,8 @@ class GazeMapper(nn.Module):
         # we believe that webcam is on the top and is parallel to the screen surface
         self.rotation_mat = torch.tensor([[-1,  0, 0 ],
                                           [ 0, -1, 0 ],
-                                          [ 0,  0, 1 ]], device=device, dtype=torch.float32)
-        self.translation_vec = nn.Parameter(torch.tensor([2560.0 / 2, 1440.0 / 2, 4000.0]), requires_grad=True)
+                                          [ 0,  0, 1 ]], device=device, dtype=torch.float32, requires_grad=False)
+        self.translation_vec = nn.Parameter(torch.randn(3, device=device), requires_grad=True)
 
     def __calc_lambda(self, gaze_tensor: np.ndarray|torch.Tensor) -> np.float32:
         z_s = torch.tensor([0, 0, 1], device=device, dtype=torch.float32)
