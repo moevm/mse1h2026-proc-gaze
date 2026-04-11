@@ -248,7 +248,8 @@ class Tracker:
         screen_video = Video(screen_video_path)
         webcam_video = Video(webcam_video_path)
 
-        self.process_video(screen_video, webcam_video, out_dir)
+        with torch.no_grad():
+            self.process_video(screen_video, webcam_video, out_dir)
 
         screen_video.close()
         webcam_video.close()
