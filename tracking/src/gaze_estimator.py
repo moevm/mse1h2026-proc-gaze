@@ -203,7 +203,7 @@ class GazeEstimator:
         
         return output
 
-    @torch.no_grad
+    @torch.no_grad()
     def __estimate_gaze_vec_torch(self, face: np.ndarray) -> np.ndarray:
         if any([s == 0 for s in face.shape]):
             return [0, 0, 0] 

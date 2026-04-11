@@ -25,7 +25,6 @@ RUN mkdir -p /models && \
     tar -xzf /models/intel.tar.gz -C /models/ && \
     mv /models/models /models/intel && \
     rm -f /models/resnet.tar.gz /models/intel.tar.gz
-
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
