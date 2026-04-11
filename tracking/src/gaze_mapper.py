@@ -5,12 +5,12 @@ import torch
 from tqdm import tqdm
 from torch.utils.data import DataLoader, Dataset
 from typing import List, Tuple
-from .video import Video
+from src.video import Video
 
 from torch.utils.data import random_split
 import os
 
-from .gaze_estimator import GazeEstimator
+from src.gaze_estimator import GazeEstimator
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 

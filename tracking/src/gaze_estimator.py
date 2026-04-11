@@ -30,7 +30,10 @@ class GazeEstimator:
         model_info = MODELS[model_key]
         
         if model_key == "gaze_vector_estimation" and self.__use_torch_gaze:
-            full_pth = os.path.join(PTH2MODELS, "other", model_info[1] + ".pt")
+            full_pth = os.path.join(PTH2MODELS, "resnet", model_info[1] + ".pt")
+            if not os.path.exists(full_pth):
+                raise FileNotFoundError(f"Torch model not found: {full_pth}")
+        
             model = resnet34(pretrained=False, num_classes=90).to(device)
             state_dict = torch.load(full_pth, map_location=device, weights_only=True)
             model.load_state_dict(state_dict)
