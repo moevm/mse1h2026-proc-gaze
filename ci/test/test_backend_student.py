@@ -1,38 +1,44 @@
+"""
+Integration tests for student API endpoints.
+"""
+
+import logging
+import uuid
+
 import pytest
 import requests
-import uuid
-import logging
-from environment import Environment, BACKEND_URL, dump_db
 
-@pytest.fixture
-def sample_student_data():
-    return {
-        "first_name": "Ivan",
-        "last_name": "Ivanov",
-        "patronymic": "Ivanovich",
-        "group": "3384"
-    }
+from config import BACKEND_URL
+from database import dump_db
 
+logger = logging.getLogger(__name__)
 
-def test_create_student(sample_student_data):
-    with Environment():
-        logging.info("POST /students")
-        response = requests.post(
-            f"{BACKEND_URL}/students",
-            json=sample_student_data
-        )
-        
-        assert response.status_code == 201
-        
-        data: dict = response.json()
-        
-        db = dump_db()
-        assert data in db["students"]
-        
-        try:
-            uuid.UUID(data["student_id"])
-        except ValueError:
-            pytest.fail("Invalid student_id")
+SAMPLE_STUDENT_DATA = {
+    "first_name": "Ivan",
+    "last_name": "Ivanov",
+    "patronymic": "Ivanovich",
+    "group": "3384",
+}
 
-        del data["student_id"]
-        assert data == sample_student_data
+def test_create_student(test_env):
+    logger.info("POST /students")
+    response = requests.post(
+        f"{BACKEND_URL}/students",
+        json=SAMPLE_STUDENT_DATA,
+        timeout=10
+    )
+
+    assert response.status_code == 201
+    data = response.json()
+
+    try:
+        uuid.UUID(data["student_id"])
+    except ValueError as e:
+        pytest.fail(f"Invalid student_id: {e}")
+
+    data_copy = data.copy()
+    del data_copy["student_id"]
+    assert data_copy == SAMPLE_STUDENT_DATA
+
+    db = dump_db()
+    assert data in db["students"]
