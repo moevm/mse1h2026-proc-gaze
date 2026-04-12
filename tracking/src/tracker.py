@@ -3,11 +3,12 @@ from src.gaze_estimator import *
 from src.gaze_mapper import *
 
 import os
+from datetime import timedelta
 import ffmpeg
 from pathlib import Path
 from typing import Any, Optional, Dict, List
 
-from src.constants import JOB_STATUS_DONE, JOB_STATUS_FAILED, JOB_STATUS_IN_PROGRESS, DEFAULT_FPS
+from src.constants import IntervalDescription
 from src.video import Video
 
 
@@ -80,22 +81,15 @@ class Tracker:
 
     def process_screen_frame(self, screen_frame: np.ndarray, gaze_info: Tuple[np.ndarray]) -> np.ndarray:
         gaze_vecs, _, _, _ = gaze_info
-        if not gaze_vecs:
-            print("detected suspicious frame")
-            return screen_frame
 
         main_vec = gaze_vecs[0]
         proj_p = self.gaze_mapper.project(main_vec).cpu().numpy()
 
         x, y, _ = proj_p
-        if not all(np.isnan(proj_p)):
-            x = int(x)
-            y = int(y)
-            res = self.draw_points(screen_frame, [(x, y)])
-            return res
-        else:
-            print("detected suspicious frame")
-            return screen_frame
+        x = int(x)
+        y = int(y)
+        res = self.draw_points(screen_frame, [(x, y)])
+        return res
 
     def _resolve_path(self, relative_path: str) -> Path:
         """
@@ -143,7 +137,7 @@ class Tracker:
             screen_video: Video,
             camera_video: Video,
             out_dir: Optional[Path] = None
-        ) -> None:
+        ) -> List[Dict[str, Any]]:
         """
         Обрабатывает пару видео (экран + вебкамера) и сохраняет результаты в out_dir.
 
@@ -184,18 +178,60 @@ class Tracker:
             (screen_video.width, screen_video.height)
         )
 
+        intervals: List[Dict[str, Any]] = []
+        
         try:
-            for camera_frame, screen_frame in zip(camera_video, screen_video):
+            frame_duration = 1.0 / screen_video.fps
+            suspicious_interval_duration = 0.0
+            suspicious_reasons: set = set()
+            
+            for frame_id, (camera_frame, screen_frame) in enumerate(zip(camera_video, screen_video)):
                 gaze_vecs, pupils, offsets, eye_bboxes = self.gaze_estimator.estimate(camera_frame)
-                gaze_info = (gaze_vecs, pupils, offsets, eye_bboxes)
-                processed_camera = self.process_camera_frame(camera_frame, gaze_info,  draw_bbox=True)
-                processed_screen = self.process_screen_frame(screen_frame, gaze_info)
+                current_time = frame_id / screen_video.fps
+                
+                if not gaze_vecs:
+                    suspicious_interval_duration += frame_duration
+                    suspicious_reasons.add(IntervalDescription.NO_GAZE)
+                    continue
+                elif len(gaze_vecs) > 1:
+                    suspicious_interval_duration += frame_duration
+                    suspicious_reasons.add(IntervalDescription.MULTIPLE_GAZES)
+                    continue
+                elif any(np.isnan(self.gaze_mapper.project(gaze_vecs[0]).cpu().numpy())):
+                    suspicious_interval_duration += frame_duration
+                    suspicious_reasons.add(IntervalDescription.OFF_SCREEN)
+                    continue
+                
+                if suspicious_interval_duration > 1e-6 and suspicious_reasons:
+                    interval_start = current_time - suspicious_interval_duration
+                    time_str = str(timedelta(seconds=int(interval_start)))
+                    
+                    intervals.append({
+                        "time": time_str,
+                        "duration": suspicious_interval_duration,
+                        "description": ", ".join(sorted([r for r in suspicious_reasons]))
+                    })
+                    
+                    suspicious_interval_duration = 0.0
+                    suspicious_reasons.clear()
 
+                gaze_info = (gaze_vecs, pupils, offsets, eye_bboxes)
+                processed_camera = self.process_camera_frame(camera_frame, gaze_info, draw_bbox=True)
+                processed_screen = self.process_screen_frame(screen_frame, gaze_info)
                 camera_writer.write(processed_camera)
                 screen_writer.write(processed_screen)
         finally:
             camera_writer.release()
             screen_writer.release()
+            
+        if suspicious_interval_duration > 1e-6 and suspicious_reasons:
+            interval_start = len(screen_video) / screen_video.fps - suspicious_interval_duration
+            time_str = str(timedelta(seconds=int(interval_start)))
+            intervals.append({
+                "time": time_str,
+                "duration": suspicious_interval_duration,
+                "description": ", ".join(sorted([r.name for r in suspicious_reasons]))
+            })
             
         try:
             self.convert_codec(input_path=camera_out_raw, output_path=camera_out)
@@ -205,6 +241,9 @@ class Tracker:
             pass
             camera_out_raw.unlink(missing_ok=True)
             screen_out_raw.unlink(missing_ok=True)
+        
+        print(intervals)
+        return intervals
 
     def process_job(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -247,12 +286,10 @@ class Tracker:
         webcam_video = Video(webcam_video_path)
 
         with torch.no_grad():
-            self.process_video(screen_video, webcam_video, out_dir)
+            intervals: List[Dict[str, Any]] = self.process_video(screen_video, webcam_video, out_dir)
 
         screen_video.close()
         webcam_video.close()
-
-        intervals: list[dict[str, Any]] = []
 
         result = {
             "recording_id": recording_id,
