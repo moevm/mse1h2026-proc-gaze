@@ -50,6 +50,10 @@ class Video:
     @property
     def height(self) -> int:
         return self._height
+    
+    @property
+    def duration_sec(self) -> float | None:
+        return self._duration_sec
 
     @property
     def frame_count(self) -> int:

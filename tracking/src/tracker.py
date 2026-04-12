@@ -5,6 +5,7 @@ from src.gaze_mapper import *
 import os
 import ffmpeg
 import logging
+import datetime
 from pathlib import Path
 from typing import Any, Optional, Dict, List
 
@@ -200,6 +201,10 @@ class Tracker:
         
         logger.info("Processing frames...")
         try:
+            total_time = datetime.timedelta(seconds=camera_video.duration_sec)
+            total_time = total_time // 1000000 * 1000000                        # remove microseconds
+            last_log_time = datetime.datetime.now()
+
             frames_cnt = min(len(camera_video), len(screen_video))
             for i, (camera_frame, screen_frame) in enumerate(zip(camera_video, screen_video)):
                 gaze_vecs, pupils, offsets, eye_bboxes = self.gaze_estimator.estimate(camera_frame)
@@ -211,9 +216,21 @@ class Tracker:
                 screen_writer.write(processed_screen)
                 
                 if i % ((frames_cnt + 9) // 10) == 0:
-                    logger.debug(f"Progress: {int(i / frames_cnt * 100)}%")
+                    log_time = datetime.datetime.now()
+                    progress = i / frames_cnt
+                    
+                    processed_time = datetime.timedelta(seconds=int(progress*camera_video.duration_sec))
+                    
+                    one_sec = datetime.timedelta(seconds=1)
+                    fps = int(frames_cnt / 10 / ((log_time - last_log_time) / one_sec + 0.001))
+
+                    logger.info(f"Progress: {i} / {frames_cnt} frames | "
+                                f"{processed_time} / {total_time} | "
+                                f"{int(progress * 100)}% | "
+                                f"{fps} fps")
+                    last_log_time = log_time
         except Exception as e:
-            logger.info("Failed to process frames.")
+            logger.error("Failed to process frames.")
             raise e
         finally:
             camera_writer.release()
