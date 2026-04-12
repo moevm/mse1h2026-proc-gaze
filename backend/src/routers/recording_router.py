@@ -1,4 +1,5 @@
 import uuid
+from http.client import HTTPException
 from typing import List
 
 from fastapi import APIRouter, status, UploadFile, Form, File
@@ -21,14 +22,16 @@ router = APIRouter(prefix="/recording", tags=["recording"])
 @router.post("/upload", response_model=RecordingRead)
 async def handle_upload_files(
         student_id: uuid.UUID = Form(...),
-        with_calibration: bool = Form(...),
         webcam: UploadFile = File(...),
         screencast: UploadFile = File(...),
 ):
     recording = await recording_crud.create_recording(student_id, webcam, screencast)
     calibration_result = None
-    if with_calibration:
+    try:
         calibration_result = await calibration_crud.get_calibration_result(student_id)
+    except HTTPException:
+        pass
+
     process_request = ProcessRequest(
         recording_id=recording.recording_id,
         path_webcam=recording.path_webcam,
