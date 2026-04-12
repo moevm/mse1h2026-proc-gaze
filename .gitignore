@@ -1,6 +1,7 @@
 .vscode
 .idea
 intel
+ci/test/logs
 tracking/intel_cache/*
 !tracking/intel_cache/README.md
 images
