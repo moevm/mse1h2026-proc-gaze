@@ -2,6 +2,7 @@ import logging
 from typing import Generator
 import pytest
 from environment import test_environment
+from database import clear_db
 
 logger = logging.getLogger(__name__)
 
@@ -13,3 +14,9 @@ def test_env() -> Generator[None, None, None]:
     with test_environment():
         yield
     logger.info("Test environment teardown complete")
+
+
+@pytest.fixture(autouse=True)
+def clean_database():
+    clear_db()
+    yield
