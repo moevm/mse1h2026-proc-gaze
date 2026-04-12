@@ -140,6 +140,13 @@ class Tracker:
             print(e.stderr.decode("utf-8", errors="replace") if e.stderr else str(e))
             raise
 
+    _LAST_PROCESS_ID = 0
+
+    @staticmethod
+    def gen_unique_process_id():
+        Tracker._LAST_PROCESS_ID += 1
+        return Tracker._LAST_PROCESS_ID
+
     def process_video(
             self,
             screen_video: Video,
@@ -159,7 +166,7 @@ class Tracker:
             - screen.mp4: обработанное видео экрана (точка проекции взгляда).
         """
 
-        logger = logging.getLogger(f"process_video {screen_video.info['path']}")
+        logger = logging.getLogger(f"process_video {Tracker.gen_unique_process_id()}")
         logger.info("Started processing videos:")
         logger.info(f"Screen: {screen_video.info}")
         logger.info(f"Camera: {camera_video.info}")
@@ -211,7 +218,9 @@ class Tracker:
                 if i % ((frames_cnt + 9) // 10) == 0:
                     log_time = datetime.datetime.now()
                     progress = i / frames_cnt
+                    
                     processed_time = datetime.timedelta(seconds=int(progress*camera_video.duration_sec))
+                    
                     one_sec = datetime.timedelta(seconds=1)
                     fps = int(frames_cnt / 10 / ((log_time - last_log_time) / one_sec + 0.001))
 
