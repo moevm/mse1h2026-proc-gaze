@@ -29,7 +29,7 @@ if ! docker info > /dev/null 2>&1; then
 fi
 
 set +e
-pytest "$SCRIPT_DIR/test_backend_student.py"
+pytest $(ls ${SCRIPT_DIR}/test_*.py)
 result=$?
 
 if [ $result -eq 0 ]; then
