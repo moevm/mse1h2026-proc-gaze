@@ -1,20 +1,24 @@
 from src.constants import *
-from src.gaze_estimator import *
-from src.gaze_mapper import *
+from src.gaze_estimator import GazeEstimator
+from src.gaze_mapper import GazeMapper
 
 import os
 import ffmpeg
 from pathlib import Path
-from typing import Any, Optional, Dict, List
+from typing import Optional, List, Any, Dict, Tuple
+import numpy as np
+import cv2
+import torch
 
-from src.constants import JOB_STATUS_DONE, JOB_STATUS_FAILED, JOB_STATUS_IN_PROGRESS, DEFAULT_FPS
+from src.constants import JobStatus, DEFAULT_FPS
 from src.video import Video
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class Tracker:
-    def __init__(self, precision_mode: int = 0, threshold: float = 0.5) -> None:
+    def __init__(self, precision_mode: int=0, threshold: float=0.5, use_torch_gaze: bool=False) -> None:        
         self._data_dir = Path(os.environ.get("DATA_DIR", "../preprocessed")).resolve()
-        self.gaze_estimator: GazeEstimator = GazeEstimator(precision_mode, threshold)
+        self.gaze_estimator: GazeEstimator = GazeEstimator(precision_mode, threshold, use_torch_gaze)
         self.gaze_mapper: GazeMapper = GazeMapper()
 
     @staticmethod
@@ -63,7 +67,7 @@ class Tracker:
 
         out = cv2.VideoWriter('output.mp4', cv2.VideoWriter_fourcc(*'mp4v'), cam.get(cv2.CAP_PROP_FPS), (frame_width, frame_height))
         while True:
-            ret, frame = cam.read()
+            _, frame = cam.read()
 
             new_frame = self.process_camera_frame(frame)
 
@@ -201,8 +205,6 @@ class Tracker:
             self.convert_codec(input_path=camera_out_raw, output_path=camera_out)
             self.convert_codec(input_path=screen_out_raw, output_path=screen_out)
         finally:
-            # TODO: пока оставляем сырые видосы, нужна более аккуратная постобработка и проверка
-            pass
             camera_out_raw.unlink(missing_ok=True)
             screen_out_raw.unlink(missing_ok=True)
 
