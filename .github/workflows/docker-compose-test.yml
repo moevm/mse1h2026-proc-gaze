@@ -28,6 +28,9 @@ jobs:
         export AMQP_QUEUE=tracking.jobs
         export AMQP_RESULT_QUEUE=tracking.results
         export MODELS_URL=https://github.com/jcdkiki/gaze-models/raw/refs/heads/main/intel.tar.gz
+        export AMQP_CALIBRATION_QUEUE=tracking.jobs.calibration
+        export AMQP_CALIBRATION_RESULT_QUEUE=tracking.results.calibration
+        export VITE_API_URL=http://localhost/api
         docker compose up -d
         echo "Waiting for services to start..."
         sleep 30
