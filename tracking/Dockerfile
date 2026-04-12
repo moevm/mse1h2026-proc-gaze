@@ -12,8 +12,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 ARG MODELS_URL
-RUN pip install --no-cache-dir "openvino-dev[onnx]==2024.6.0" && \
-    wget ${MODELS_URL} -O intel.tar.gz && \
+RUN wget ${MODELS_URL} -O intel.tar.gz && \
     tar -xzf intel.tar.gz -C / && \
     rm intel.tar.gz
 
