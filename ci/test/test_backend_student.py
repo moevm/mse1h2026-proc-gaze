@@ -1,7 +1,3 @@
-"""
-Integration tests for student API endpoints.
-"""
-
 import logging
 import uuid
 
@@ -9,32 +5,13 @@ import pytest
 import requests
 
 from config import BACKEND_URL
-from database import dump_db
-
-logger = logging.getLogger(__name__)
-
-SAMPLE_STUDENT_DATA = {
-    "first_name": "Ivan",
-    "last_name": "Ivanov",
-    "patronymic": "Ivanovich",
-    "group": "3384",
-}
-
-SAMPLE_STUDENT_DATA_2 = {
-    "first_name": "Petr",
-    "last_name": "Petrov",
-    "patronymic": "Petrovich",
-    "group": "3385",
-}
-
+from database import dump_db, gen_sample_students, add_students
 
 def test_create_student(test_env):
-    logger.info("POST /students")
-    response = requests.post(
-        f"{BACKEND_URL}/students",
-        json=SAMPLE_STUDENT_DATA,
-        timeout=10
-    )
+    student = gen_sample_students(1)[0]
+    logging.info(f"Generated student: {student}")
+    logging.info("POST /students")
+    response = requests.post(f"{BACKEND_URL}/students", json=student, timeout=10)
 
     assert response.status_code == 201
     data = response.json()
@@ -44,78 +21,56 @@ def test_create_student(test_env):
     except ValueError as e:
         pytest.fail(f"Invalid student_id: {e}")
 
-    data_copy = data.copy()
-    del data_copy["student_id"]
-    assert data_copy == SAMPLE_STUDENT_DATA
-
+    student["student_id"] = data["student_id"]
+    assert data == student
+    
     db = dump_db()
     assert data in db["students"]
 
 
 def test_get_student(test_env):
-    logger.info("GET /students/{id}")
-
-    # Create student
-    create_response = requests.post(
-        f"{BACKEND_URL}/students",
-        json=SAMPLE_STUDENT_DATA,
-        timeout=10
-    )
-    assert create_response.status_code == 201
-    student_id = create_response.json()["student_id"]
-
-    # Get student
-    response = requests.get(
-        f"{BACKEND_URL}/students/{student_id}",
-        timeout=10
-    )
+    student = add_students(gen_sample_students(1))[0]
+    
+    logging.info("GET /students/{id}")
+    response = requests.get(f"{BACKEND_URL}/students/{student['student_id']}", timeout=10)
     assert response.status_code == 200
 
     data = response.json()
-    assert data["student_id"] == student_id
-    assert data["first_name"] == SAMPLE_STUDENT_DATA["first_name"]
-    assert data["last_name"]  == SAMPLE_STUDENT_DATA["last_name"]
-    assert data["patronymic"] == SAMPLE_STUDENT_DATA["patronymic"]
-    assert data["group"]      == SAMPLE_STUDENT_DATA["group"]
+    assert data["student_id"] == student["student_id"]
+    assert data["first_name"] == student["first_name"]
+    assert data["last_name"]  == student["last_name"]
+    assert data["patronymic"] == student["patronymic"]
+    assert data["group"]      == student["group"]
 
 
 def test_get_all_students(test_env):
-    logger.info("GET /students")
-
-    # Create two students
-    requests.post(f"{BACKEND_URL}/students", json=SAMPLE_STUDENT_DATA, timeout=10)
-    requests.post(f"{BACKEND_URL}/students", json=SAMPLE_STUDENT_DATA_2, timeout=10)
-
-    # Get all students
+    N_STUDENTS=5
+    students = add_students(gen_sample_students(N_STUDENTS))
+    
+    logging.info("GET /students")
     response = requests.get(f"{BACKEND_URL}/students", timeout=10)
     assert response.status_code == 200
 
-    students = response.json()
-    assert len(students) == 2
+    data = response.json()
+    assert len(students) == N_STUDENTS
 
-    del students[0]["student_id"]
-    del students[1]["student_id"]
-    assert any([ x == SAMPLE_STUDENT_DATA for x in students])
-    assert any([ x == SAMPLE_STUDENT_DATA_2 for x in students])
+    for i in range(N_STUDENTS):
+        logging.info(f"Recv {data[i]}")
+        
+    for i in range(N_STUDENTS):
+        assert any([ x == students[i] for x in data ])
 
 def test_get_nonexistent_student(test_env):
-    logger.info("GET /students/{id} with non-existent ID")
-
-    fake_id = str(uuid.uuid4())
-    response = requests.get(f"{BACKEND_URL}/students/{fake_id}", timeout=10)
+    logging.info("GET /students/{id} with non-existent ID")
+    response = requests.get(f"{BACKEND_URL}/students/{uuid.uuid4()}", timeout=10)
     assert response.status_code == 404
 
 def test_create_student_no_patr(test_env):
-    logger.info("POST /students without patronymic")
-    data = {
-        "first_name": "Sergey",
-        "last_name": "Sergeev",
-        "patronymic": None,
-        "group": "3384",
-    }
-
-    response = requests.post(f"{BACKEND_URL}/students", json=data, timeout=10)
+    logging.info("POST /students without patronymic")
+    student = gen_sample_students(1, have_patronymic=False)[0]
+    response = requests.post(f"{BACKEND_URL}/students", json=student, timeout=10)
     assert response.status_code == 201
 
-    result = response.json()
-    assert result["patronymic"] is None
+    data = response.json()
+    student["student_id"] = data["student_id"]
+    assert data == student
