@@ -19,8 +19,8 @@ RUN pip install --no-cache-dir \
 
 ARG MODELS_URL
 RUN mkdir -p /models && \
-    wget --tries=3 --timeout=30 -O /models/resnet.tar.gz "${MODELS_URL}resnet.tar.gz" && \
-    wget --tries=3 --timeout=30 -O /models/intel.tar.gz "${MODELS_URL}models.tar.gz" && \
+    wget -O /models/resnet.tar.gz "${MODELS_URL}resnet.tar.gz" && \
+    wget -O /models/intel.tar.gz "${MODELS_URL}models.tar.gz" && \
     tar -xzf /models/resnet.tar.gz -C /models/ && \
     tar -xzf /models/intel.tar.gz -C /models/ && \
     mv /models/models /models/intel && \
