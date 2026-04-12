@@ -1,29 +1,26 @@
-import asyncio
 import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
+from src.consumers import suspicious_consumer, calibration_consumer
 from src.routers import recording_router, notification_router, suspicious_router, student_router
-from src.consumers import suspicious_consumer  # noqa: F401
 from src.util.broker import broker
 from src.util.config import RMQ_URL
-from src.util.database import engine, Base
+from src.util.database import engine
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    async with engine.begin() as conn:
-        logging.info(f"Creating DB {app}")
-        await conn.run_sync(Base.metadata.create_all)
-    while True:
-        try:
-            await broker.start()
-            logging.info(f"RabbitMQ broker started at url: {RMQ_URL}")
-            break
-        except Exception as e:
-            logging.warning(f"RabbitMQ not ready: {e}. Retry in 2s...")
-            await asyncio.sleep(2)
+    await broker.start()
+    logging.info(f"RabbitMQ broker started at url: {RMQ_URL}")
+
     yield
     await broker.close()
     logging.info("RabbitMQ broker stopped")
@@ -33,6 +30,14 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     lifespan=lifespan
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:80"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 app.include_router(recording_router.router)

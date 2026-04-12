@@ -3,19 +3,22 @@ FROM python:3.11-slim
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libglib2.0-0 libsm6 libxext6 libxrender1 \
+    ffmpeg=7:7.1.3-0+deb13u1 \
+    libglib2.0-0t64=2.84.4-3~deb13u2 \
+    libsm6=2:1.2.6-1 \
+    libxext6=2:1.3.4-1+b3 \
+    libxrender1=1:0.9.12-1 \
+    wget=1.25.0-2 \
     && rm -rf /var/lib/apt/lists/*
+
+ARG MODELS_URL
+RUN pip install --no-cache-dir "openvino-dev[onnx]==2024.6.0" && \
+    wget ${MODELS_URL} -O intel.tar.gz && \
+    tar -xzf intel.tar.gz -C / && \
+    rm intel.tar.gz
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-
-COPY intel_cache/ intel_cache/
-RUN pip install --no-cache-dir openvino-dev[onnx] && \
-    omz_downloader --cache_dir intel_cache --name face-detection-0200 -o /intel && \
-    omz_downloader --cache_dir intel_cache --name landmarks-regression-retail-0009 -o /intel && \
-    omz_downloader --cache_dir intel_cache --name facial-landmarks-98-detection-0001 -o /intel && \
-    omz_downloader --cache_dir intel_cache --name head-pose-estimation-adas-0001 -o /intel && \
-    omz_downloader --cache_dir intel_cache --name gaze-estimation-adas-0002 -o /intel
 
 COPY main.py .
 COPY src ./src

@@ -2,18 +2,18 @@ import cv2
 import numpy as np
 from pathlib import Path
 from typing import Iterator, Optional
-
+from src.constants import DEFAULT_FPS
 
 class Video:
     def __init__(self, video_path: str | Path) -> None:
         # video_path - локальный путь | url
         self._path = video_path
-        self._video: Optional[cv2.VideoCapture] = cv2.VideoCapture(str(self._path))
+        self._video: Optional[cv2.VideoCapture] = cv2.VideoCapture(str(self._path), cv2.CAP_FFMPEG)
         if self._video is None or not self._video.isOpened():
             self._video = None
             raise ValueError(f"Cannot open video source: {self._path}")
 
-        self._fps: float = float(self._video.get(cv2.CAP_PROP_FPS) or 0.0)
+        self._fps: float = float(self._video.get(cv2.CAP_PROP_FPS) or DEFAULT_FPS) # works very bad
         self._frame_count: int = int(self._video.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
         self._width: int = int(self._video.get(cv2.CAP_PROP_FRAME_WIDTH) or 0)
         self._height: int = int(self._video.get(cv2.CAP_PROP_FRAME_HEIGHT) or 0)
@@ -42,6 +42,18 @@ class Video:
     @property
     def fps(self) -> float:
         return self._fps
+    
+    @property
+    def width(self) -> int:
+        return self._width
+    
+    @property
+    def height(self) -> int:
+        return self._height
+    
+    @property
+    def duration_sec(self) -> float | None:
+        return self._duration_sec
 
     @property
     def frame_count(self) -> int:
@@ -103,6 +115,9 @@ class Video:
     def __iter__(self) -> Iterator[np.ndarray]:
         for _, _, frame in self.iter_frames(start=0):
             yield frame
+
+    def __len__(self) -> int:
+        return self._frame_count
 
     def close(self) -> None:
         """Release the underlying video capture resource."""

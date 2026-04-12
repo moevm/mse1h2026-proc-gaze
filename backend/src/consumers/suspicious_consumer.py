@@ -3,8 +3,10 @@ from datetime import datetime, timezone
 
 from faststream.rabbit import RabbitQueue
 
+from src.models import NotificationType
 from src.crud import notification_crud
 from src.crud import suspicious_crud
+from src.crud import recording_crud
 from src.schemas.notification_schema import NotificationCreate
 from src.schemas.suspicious_schema import SuspiciousResult
 from src.util.broker import broker
@@ -17,10 +19,15 @@ results_queue = RabbitQueue(AMQP_RESULT_QUEUE, durable=True)
 async def handle_suspicious_intervals(message: SuspiciousResult):
     logging.info(f"SuspiciousResult: {message}")
     await suspicious_crud.save_suspicious_intervals(message)
+    await recording_crud.mark_recording_done(
+        recording_id=message.recording_id,
+        path_processed_webcam=message.path_processed_webcam,
+        path_processed_screen=message.path_processed_screen,
+    )
     await notification_crud.create_notification(
         NotificationCreate(
             recording_id=message.recording_id,
             created_date=datetime.now(timezone.utc),
-            type="DONE",
+            type=NotificationType.DONE,
         )
     )

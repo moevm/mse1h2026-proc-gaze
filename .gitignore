@@ -10,6 +10,13 @@ __pycache__/
 *.py[codz]
 *$py.class
 
+# Models checkpoints
+*.pt
+*.onnx
+*.pth
+*.ckpt
+
+
 # C extensions
 *.so
 

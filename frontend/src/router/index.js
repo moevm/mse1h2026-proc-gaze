@@ -4,6 +4,10 @@ const router = createRouter({
     history: createWebHistory('/'),
     routes: [
         {
+            path: '/',
+            redirect: '/main'
+        },
+        {
             path: '/upload-video',
             name: 'UploadPlayerView',
             component: () => import('@/views/UploadPlayerView.vue'),
@@ -16,7 +20,7 @@ const router = createRouter({
             meta: { requiresAuth: true, requiresVerification: true }
         },
         {
-            path: '/result',
+            path: '/result/:recording_id',
             name: 'ResultView',
             component: () => import('@/views/ResultView.vue'),
             meta: { requiresAuth: true, requiresVerification: true }

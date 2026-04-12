@@ -1,3 +1,4 @@
+import uuid
 from typing import List
 
 from fastapi import APIRouter, status
@@ -15,10 +16,5 @@ async def get_notifications():
 
 
 @router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_notification(id: str):
+async def delete_notification(id: uuid.UUID):
     await notification_crud.delete_notification(id)
-
-
-@router.put("/{id}", status_code=status.HTTP_200_OK)
-async def mark_notification_as_viewed(id: str):
-    await notification_crud.mark_notification_as_viewed(id)

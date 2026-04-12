@@ -12,12 +12,8 @@ from src.util.connection import connection
 
 
 @connection
-async def get_student(id: str, session: AsyncSession) -> StudentRead:
-    try:
-        student_uuid = uuid.UUID(id)
-    except ValueError:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid student_id format. Expected UUID.")
-    student = (await session.execute(select(Student).where(Student.student_id == student_uuid))).scalar_one_or_none()
+async def get_student(id: uuid.UUID, session: AsyncSession) -> StudentRead:
+    student = (await session.execute(select(Student).where(Student.student_id == id))).scalar_one_or_none()
     if not student:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student not found")
     return StudentRead.model_validate(student)
@@ -32,11 +28,12 @@ async def get_students(session: AsyncSession) -> List[StudentRead]:
 
 @connection
 async def create_student(student_create: StudentCreate, session: AsyncSession) -> StudentRead:
-    student = Student()
-    student.first_name = student_create.first_name
-    student.last_name  = student_create.last_name
-    student.patronymic = student_create.patronymic
-    student.group      = student_create.group
+    student = Student(
+        first_name=student_create.first_name,
+        last_name=student_create.last_name,
+        patronymic=student_create.patronymic,
+        group=student_create.group,
+    )
     
     session.add(student)
     await session.commit()
