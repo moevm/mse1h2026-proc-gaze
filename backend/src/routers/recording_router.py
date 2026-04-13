@@ -1,8 +1,7 @@
 import uuid
-from http.client import HTTPException
 from typing import List
 
-from fastapi import APIRouter, status, UploadFile, Form, File
+from fastapi import APIRouter, status, UploadFile, Form, File, HTTPException
 from faststream.rabbit import RabbitQueue
 
 from src.crud import calibration_crud
@@ -29,7 +28,7 @@ async def handle_upload_files(
     calibration_result = None
     try:
         calibration_result = await calibration_crud.get_calibration_result(student_id)
-    except HTTPException:
+    except Exception:
         pass
 
     process_request = ProcessRequest(
