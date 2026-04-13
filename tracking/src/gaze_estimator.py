@@ -3,11 +3,11 @@ import openvino as ov
 import cv2
 import os
 import torch
-from .resnet import resnet34
+from src.resnet import resnet34
 from torchvision.transforms import transforms as T
 
 from typing import List, Tuple, Union
-from .constants import *
+from src.constants import *
 
 core = ov.Core()
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -25,6 +25,16 @@ class GazeEstimator:
         self._pupils_detection_model         = self.__load_model("pupils_detection")
         self._head_pose_estimation_model     = self.__load_model("head_pose_estimation")
         self._gaze_vector_estimation_model   = self.__load_model("gaze_vector_estimation")
+        
+        self.transforms = T.Compose([
+            T.ToPILImage(),                     
+            T.Resize((448, 448)),
+            T.ToTensor(),                
+            T.Normalize(
+                mean=[0.485, 0.456, 0.406],
+                std=[0.229, 0.224, 0.225]
+            ),
+            ])
         
     def __load_model(self, model_key: str) -> ModelType:
         model_info = MODELS[model_key]
@@ -206,20 +216,10 @@ class GazeEstimator:
     @torch.no_grad()
     def __estimate_gaze_vec_torch(self, face: np.ndarray) -> np.ndarray:
         if any([s == 0 for s in face.shape]):
-            return [0, 0, 0] 
-        
-        transform = T.Compose([
-        T.ToPILImage(),                     
-        T.Resize(448),
-        T.ToTensor(),                
-        T.Normalize(
-            mean=[0.485, 0.456, 0.406],
-            std=[0.229, 0.224, 0.225]
-        ),
-        ])
+            return np.array([0, 0, 0], dtype=np.float32) 
         
         face_rgb = face[..., ::-1]
-        face_tensor = transform(face_rgb).unsqueeze(0).to(device)
+        face_tensor = self.transforms(face_rgb).unsqueeze(0).to(device)
         
         yaw_logits, pitch_logits = self._gaze_vector_estimation_model(face_tensor)
 
@@ -228,23 +228,26 @@ class GazeEstimator:
         
         idx_tensor = torch.arange(90, dtype=torch.float32, device=device)
         
-        yaw_pred   = torch.sum(yaw_probs   * idx_tensor, dim=1) 
-        pitch_pred = torch.sum(pitch_probs * idx_tensor, dim=1)
+        yaw_pred   = torch.sum(yaw_probs   * idx_tensor, dim=1) # math expectation formula \sum{x * p(x)}
+        pitch_pred = torch.sum(pitch_probs * idx_tensor, dim=1) # math expectation
         
+        # 1 bin = 4 degree; yaw_pred = math expectation of 90 bins => 90 bins = 360 degree; degree \in [0, 360] - 180 = [-180; +180]
         yaw_deg   = yaw_pred   * 4.0 - 180.0
         pitch_deg = pitch_pred * 4.0 - 180.0
         
+        # degrees into radians
         yaw_rad = np.deg2rad(yaw_deg.item())
         pitch_rad = np.deg2rad(pitch_deg.item())
         
+        # aircraft principal axes to cartesian
         x = -np.cos(pitch_rad) * np.sin(yaw_rad)
         y = -np.sin(pitch_rad)
         z = np.cos(pitch_rad) * np.cos(yaw_rad)
         
         gaze_vec = np.array([x, y, z])
-        len = np.linalg.norm(gaze_vec)
+        norm = np.linalg.norm(gaze_vec)
         
-        gaze_vec /= len if len != 0 else 1
+        gaze_vec /= norm if norm != 0 else 1
         return gaze_vec
     
     def estimate(self, frame: np.ndarray) -> Tuple[List, List, List, List]:
