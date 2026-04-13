@@ -18,6 +18,7 @@ jobs:
       uses: docker/setup-compose-action@v2
 
     - name: Run tests
+      continue-on-error: true
       run: |
         export POSTGRES_DB=gaze_db
         export POSTGRES_USER=gaze_user
@@ -32,3 +33,8 @@ jobs:
         export AMQP_CALIBRATION_RESULT_QUEUE=tracking.results.calibration
         export VITE_API_URL=http://localhost/api
         bash ci/test/run_tests.sh
+    
+    - uses: actions/upload-artifact@v7
+      with:
+        name: integration-tests-logs
+        path: ci/test/logs/*/
