@@ -1,0 +1,34 @@
+name: Integration tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-docker-compose:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Compose
+      uses: docker/setup-compose-action@v2
+
+    - name: Run tests
+      run: |
+        export POSTGRES_DB=gaze_db
+        export POSTGRES_USER=gaze_user
+        export POSTGRES_PASSWORD=password
+        export DATA_DIR=/data
+        export DATABASE_URL=postgresql+asyncpg://gaze_user:password@db:5432/gaze_db
+        export AMQP_URL=amqp://guest:guest@rabbitmq:5672/
+        export AMQP_QUEUE=tracking.jobs
+        export AMQP_RESULT_QUEUE=tracking.results
+        export MODELS_URL=https://github.com/jcdkiki/gaze-models/raw/refs/heads/main/intel.tar.gz
+        export AMQP_CALIBRATION_QUEUE=tracking.jobs.calibration
+        export AMQP_CALIBRATION_RESULT_QUEUE=tracking.results.calibration
+        export VITE_API_URL=http://localhost/api
+        bash ci/test/run_tests.sh
