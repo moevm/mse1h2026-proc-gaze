@@ -20,7 +20,7 @@ def run_command(cmd: List[str],
 
 def start_docker() -> None:
     logger.info("Starting Docker compose services")
-    run_command(["docker", "compose", "up", "-d"], timeout=60)
+    run_command(["docker", "compose", "up", "-d"], timeout=600)
 
 
 def stop_docker() -> None:
