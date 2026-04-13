@@ -4,6 +4,10 @@ const router = createRouter({
     history: createWebHistory('/'),
     routes: [
         {
+            path: '/',
+            redirect: '/main'
+        },
+        {
             path: '/upload-video',
             name: 'UploadPlayerView',
             component: () => import('@/views/UploadPlayerView.vue'),

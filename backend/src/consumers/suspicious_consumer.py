@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 
 from faststream.rabbit import RabbitQueue
 
+from src.models import NotificationType
 from src.crud import notification_crud
 from src.crud import suspicious_crud
 from src.crud import recording_crud
@@ -27,6 +28,6 @@ async def handle_suspicious_intervals(message: SuspiciousResult):
         NotificationCreate(
             recording_id=message.recording_id,
             created_date=datetime.now(timezone.utc),
-            type="DONE",
+            type=NotificationType.DONE,
         )
     )

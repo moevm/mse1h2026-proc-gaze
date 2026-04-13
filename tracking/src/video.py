@@ -50,6 +50,10 @@ class Video:
     @property
     def height(self) -> int:
         return self._height
+    
+    @property
+    def duration_sec(self) -> float | None:
+        return self._duration_sec
 
     @property
     def frame_count(self) -> int:
@@ -111,6 +115,9 @@ class Video:
     def __iter__(self) -> Iterator[np.ndarray]:
         for _, _, frame in self.iter_frames(start=0):
             yield frame
+
+    def __len__(self) -> int:
+        return self._frame_count
 
     def close(self) -> None:
         """Release the underlying video capture resource."""
