@@ -1,7 +1,7 @@
 import logging
 import os
 import subprocess
-from typing import List, Optional
+from typing import List
 
 from config import DOCKER_COMPONENTS, TEST_LOGS_DIR
 
@@ -14,7 +14,7 @@ def run_command(cmd: List[str],
                 capture_output: bool = False) -> subprocess.CompletedProcess:
     result = subprocess.run(cmd, capture_output=capture_output, timeout=timeout, text=True)
     if expect_ok and result.returncode != 0:
-        raise Exception("Failed to execute command")
+        raise Exception(f"Failed to execute command. {result.stderr + result.stdout}")
     return result
 
 
@@ -27,6 +27,17 @@ def stop_docker() -> None:
     logger.info("Stopping Docker compose services")
     run_command(["docker", "compose", "stop"], expect_ok=False)
     run_command(["docker", "compose", "rm", "-f"], expect_ok=False)
+
+def docker_exec(cmd: List[str], container="backend") -> str:
+    logger.info(f"Docker exec {cmd}")
+    result = run_command([ "docker", "compose", "exec", container ] + cmd, capture_output=True)
+    return result.stdout
+
+
+def clear_shared_data() -> None:
+    logger.info("Deleting shared data")
+    result = run_command([ "docker", "compose", "exec", "backend", "/bin/sh", "-c", "rm -rf /data/*" ], capture_output=True)
+    logger.info(f"Result: {result.stdout + result.stderr}")
 
 
 def capture_logs() -> None:

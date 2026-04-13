@@ -3,6 +3,7 @@ from typing import Generator
 import pytest
 from environment import test_environment
 from database import clear_db
+from docker import clear_shared_data
 
 logger = logging.getLogger(__name__)
 
@@ -19,4 +20,9 @@ def test_env() -> Generator[None, None, None]:
 @pytest.fixture(autouse=True)
 def clean_database():
     clear_db()
+    yield
+
+@pytest.fixture(autouse=True)
+def clean_shared_data():
+    clear_shared_data()
     yield
