@@ -31,8 +31,8 @@ class UploadApi {
                             calibrationData: CalibrationData): Promise<ApiResponse<any>> {
         const formData = new FormData();
         formData.append('student_id', studentId);
-        formData.append('webcam_video', webcamBlob, 'webcam.webm');
-        formData.append('screen_video', screenBlob, 'screen.webm');
+        formData.append('webcam', webcamBlob, 'webcam.webm');
+        formData.append('screencast', screenBlob, 'screen.webm');
         formData.append('calibration_data', JSON.stringify(calibrationData));
 
         const response = await apiFileClient.post<ApiResponse<any>>('/recording/calibration', formData, {
