@@ -12,12 +12,8 @@ from src.util.connection import connection
 
 
 @connection
-async def get_student(id: str, session: AsyncSession) -> StudentRead:
-    try:
-        student_uuid = uuid.UUID(id)
-    except ValueError:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid student_id format. Expected UUID.")
-    student = (await session.execute(select(Student).where(Student.student_id == student_uuid))).scalar_one_or_none()
+async def get_student(id: uuid.UUID, session: AsyncSession) -> StudentRead:
+    student = (await session.execute(select(Student).where(Student.student_id == id))).scalar_one_or_none()
     if not student:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student not found")
     return StudentRead.model_validate(student)
