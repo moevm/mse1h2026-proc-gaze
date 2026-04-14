@@ -5,12 +5,12 @@ import torch
 from tqdm import tqdm
 from torch.utils.data import DataLoader, Dataset
 from typing import List, Tuple
-from .video import Video
+from src.video import Video
 
 from torch.utils.data import random_split
 import os
 
-from .gaze_estimator import GazeEstimator
+from src.gaze_estimator import GazeEstimator
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -55,7 +55,8 @@ def calibrate(n_epochs: int, model: GazeMapper, train_loader: DataLoader, val_lo
     model = model.to(device)
     
     criterion = nn.MSELoss()
-    optimizer = torch.optim.SGD(model.parameters(), lr=1e-3)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.3)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.5)
     
     for epoch in range(1, n_epochs+1):
         train_bar = tqdm(train_loader, f"Training {epoch}/{n_epochs}")
@@ -94,7 +95,7 @@ def calibrate(n_epochs: int, model: GazeMapper, train_loader: DataLoader, val_lo
 
 if __name__ == "__main__":
     mapper = GazeMapper()
-    gaze_estimator = GazeEstimator()
+    gaze_estimator = GazeEstimator(use_torch_gaze=True)
     
     vids = [Video(os.path.join("../calibration", p)) for p in os.listdir("../calibration") if not ".txt" in p]
     file = open("../calibration/points.txt", "r", encoding="utf-8")
@@ -117,7 +118,7 @@ if __name__ == "__main__":
     train_loader = DataLoader(train, batch_size=1, shuffle=True, num_workers=2, pin_memory=True)
     val_loader = DataLoader(val, batch_size=1, shuffle=True, num_workers=2, pin_memory=True)
     
-    epochs = 25
+    epochs = 200
     mapper = calibrate(epochs, mapper, train_loader, val_loader)
     
     torch.save(mapper, "../models/other/mapper.pth")
