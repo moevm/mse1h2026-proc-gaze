@@ -3,8 +3,8 @@ from typing import List
 
 from fastapi import APIRouter
 
-from src.schemas.suspicious_schema import SuspiciousRead
 from src.crud import suspicious_crud
+from src.schemas.suspicious_schema import SuspiciousRead
 
 router = APIRouter(prefix="/suspicious", tags=["suspicious"])
 

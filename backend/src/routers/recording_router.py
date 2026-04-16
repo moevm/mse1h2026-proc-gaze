@@ -61,7 +61,6 @@ async def handle_calibration(
                         calibration_data=calibration_data), jobs_calibration_queue)
 
 
-
 @router.get("/screen/{id}")
 async def get_screencast(id: uuid.UUID):
     screencast = await recording_crud.get_screen(id)

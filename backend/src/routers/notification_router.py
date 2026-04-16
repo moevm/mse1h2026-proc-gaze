@@ -3,8 +3,8 @@ from typing import List
 
 from fastapi import APIRouter, status
 
-from src.schemas.notification_schema import NotificationRead
 from src.crud import notification_crud
+from src.schemas.notification_schema import NotificationRead
 
 router = APIRouter(prefix="/notification", tags=["notification"])
 

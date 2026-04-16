@@ -2,13 +2,14 @@ import uuid
 from datetime import datetime, timezone
 from enum import Enum as PyEnum
 
-from sqlalchemy import Column, String, DateTime, Float, Integer, ForeignKey, Enum, Time, Boolean, TIMESTAMP, MetaData, \
+from sqlalchemy import Column, String, DateTime, Float, Integer, ForeignKey, Enum, Time, TIMESTAMP, MetaData, \
     ARRAY, Double
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.orm import relationship, DeclarativeBase
 
 metadata = MetaData(schema="public")
+
 
 class Base(AsyncAttrs, DeclarativeBase):
     metadata = metadata
@@ -36,7 +37,7 @@ class Student(Base):
 
     def __repr__(self):
         return f"<Student(student_id={self.student_id})>"
-    
+
     def to_dict(self):
         return {
             "student_id": str(self.student_id)
@@ -47,24 +48,25 @@ class Recording(Base):
     __tablename__ = "recording"
 
     recording_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    student_id   = Column(UUID(as_uuid=True), ForeignKey("student.student_id", ondelete="CASCADE"), nullable=False)
+    student_id = Column(UUID(as_uuid=True), ForeignKey("student.student_id", ondelete="CASCADE"), nullable=False)
 
-    path_screen     = Column(String(255), nullable=False)
-    path_webcam     = Column(String(255), nullable=False)
-    path_processed_webcam  = Column(String(255), nullable=True)
-    path_processed_screen  = Column(String(255), nullable=True)
-    created_date    = Column(TIMESTAMP(timezone=True), default=lambda: datetime.now(timezone.utc).replace(tzinfo=None), nullable=False)
-    status          = Column(Enum(RecordingStatus), default=RecordingStatus.PENDING, nullable=False)
-    processed_date  = Column(TIMESTAMP(timezone=True), nullable=True)
+    path_screen = Column(String(255), nullable=False)
+    path_webcam = Column(String(255), nullable=False)
+    path_processed_webcam = Column(String(255), nullable=True)
+    path_processed_screen = Column(String(255), nullable=True)
+    created_date = Column(TIMESTAMP(timezone=True), default=lambda: datetime.now(timezone.utc).replace(tzinfo=None),
+                          nullable=False)
+    status = Column(Enum(RecordingStatus), default=RecordingStatus.PENDING, nullable=False)
+    processed_date = Column(TIMESTAMP(timezone=True), nullable=True)
     suspicion_level = Column(Float, nullable=True)
 
-    student              = relationship("Student", back_populates="recordings")
+    student = relationship("Student", back_populates="recordings")
     suspicious_intervals = relationship("SuspiciousInterval", back_populates="recording")
-    notifications        = relationship("Notification", back_populates="recording")
+    notifications = relationship("Notification", back_populates="recording")
 
     def __repr__(self):
         return f"<Recording(recording_id={self.recording_id})>"
-    
+
     def to_dict(self):
         return {
             "recording_id": str(self.recording_id),
@@ -82,18 +84,18 @@ class Recording(Base):
 class SuspiciousInterval(Base):
     __tablename__ = "suspicious_interval"
 
-    sus_id       = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    sus_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     recording_id = Column(UUID(as_uuid=True), ForeignKey("recording.recording_id", ondelete="CASCADE"), nullable=False)
-    
-    time        = Column(Time, nullable=False)
-    duration    = Column(Integer, nullable=False)
+
+    time = Column(Time, nullable=False)
+    duration = Column(Integer, nullable=False)
     description = Column(String(500), nullable=False)
 
     recording = relationship("Recording", back_populates="suspicious_intervals")
 
     def __repr__(self):
         return f"<SuspiciousInterval(sus_id={self.sus_id})>"
-    
+
     def to_dict(self):
         return {
             "sus_id": str(self.sus_id),
@@ -108,16 +110,18 @@ class Notification(Base):
     __tablename__ = "notification"
 
     notification_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    recording_id    = Column(UUID(as_uuid=True), ForeignKey("recording.recording_id", ondelete="CASCADE"), nullable=False)
-    
-    created_date = Column(TIMESTAMP(timezone=True), default=lambda: datetime.now(timezone.utc).replace(tzinfo=None), nullable=False)
-    sent_date    = Column(DateTime, nullable=True)
-    type         = Column(Enum(NotificationType), nullable=False)
+    recording_id = Column(UUID(as_uuid=True), ForeignKey("recording.recording_id", ondelete="CASCADE"), nullable=False)
+
+    created_date = Column(TIMESTAMP(timezone=True), default=lambda: datetime.now(timezone.utc).replace(tzinfo=None),
+                          nullable=False)
+    sent_date = Column(DateTime, nullable=True)
+    type = Column(Enum(NotificationType), nullable=False)
 
     recording = relationship("Recording", back_populates="notifications")
+
     def __repr__(self):
         return f"<Notification(notification_id={self.notification_id})>"
-    
+
     def to_dict(self):
         return {
             "notification_id": str(self.notification_id),

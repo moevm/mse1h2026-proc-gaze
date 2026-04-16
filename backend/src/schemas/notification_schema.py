@@ -21,6 +21,7 @@ class NotificationRead(BaseModel):
             datetime: lambda v: v.isoformat() if v else None
         }
 
+
 class NotificationCreate(BaseModel):
     recording_id: uuid.UUID
     created_date: datetime

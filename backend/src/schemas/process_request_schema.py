@@ -11,5 +11,6 @@ class ProcessRequest(BaseModel):
     path_webcam: str = Field(...)
     path_screen: str = Field(...)
     calibration_result: Optional[CalibrationResultRead] = Field(None)
+
     class Config:
         from_attributes = True

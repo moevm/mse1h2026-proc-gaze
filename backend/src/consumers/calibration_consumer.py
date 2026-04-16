@@ -14,4 +14,3 @@ calibration_results_queue = RabbitQueue(AMQP_CALIBRATION_RESULT_QUEUE, durable=T
 async def handle_calibration_result(message: CalibrationResultRead):
     logging.info(f"Calibration result: {message}")
     await calibration_crud.create_calibration_result(message)
-
