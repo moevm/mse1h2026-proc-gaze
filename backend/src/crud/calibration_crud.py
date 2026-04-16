@@ -1,13 +1,13 @@
 import uuid
 
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 from starlette.exceptions import HTTPException
 
-from src.schemas.calibration_schema import CalibrationResultRead
 from src.models import CalibrationResult
+from src.schemas.calibration_schema import CalibrationResultRead
 from src.util.connection import connection
-from sqlalchemy.ext.asyncio import AsyncSession
 
 
 @connection
@@ -28,6 +28,7 @@ async def create_calibration_result(calibration_result: CalibrationResultRead, s
         session.add(db_calibration)
 
     await session.commit()
+
 
 @connection
 async def get_calibration_result(student_id: uuid.UUID, session: AsyncSession):

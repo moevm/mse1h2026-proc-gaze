@@ -1,7 +1,8 @@
 import uuid
+from typing import Optional
 
 from pydantic import BaseModel, Field
-from typing import Optional
+
 
 class StudentRead(BaseModel):
     student_id: uuid.UUID = Field(...)
@@ -11,6 +12,7 @@ class StudentRead(BaseModel):
     group: str = Field(...)
 
     model_config = {"from_attributes": True}
+
 
 class StudentCreate(BaseModel):
     first_name: str

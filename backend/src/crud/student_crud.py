@@ -9,8 +9,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 from starlette.exceptions import HTTPException
 
-from src.schemas.student_schema import StudentRead, StudentCreate
 from src.models import Student
+from src.schemas.student_schema import StudentRead, StudentCreate
 from src.util.connection import connection
 
 
@@ -37,7 +37,6 @@ async def create_student(student_create: StudentCreate, session: AsyncSession) -
         patronymic=student_create.patronymic,
         group=student_create.group,
     )
-
     session.add(student)
     await session.commit()
     await session.refresh(student)
@@ -51,7 +50,6 @@ async def insert_students(student_dump: UploadFile, session: AsyncSession):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Only CSV files are allowed"
         )
-
     contents = await student_dump.read()
     try:
         csv_text = contents.decode('utf-8')

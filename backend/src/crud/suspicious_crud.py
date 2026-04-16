@@ -1,12 +1,10 @@
 import uuid
 
-from sqlalchemy import select, UUID
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from starlette import status
-from starlette.exceptions import HTTPException
 
-from src.schemas.suspicious_schema import SuspiciousRead, SuspiciousResult
 from src.models import SuspiciousInterval
+from src.schemas.suspicious_schema import SuspiciousRead, SuspiciousResult
 from src.util.connection import connection
 
 

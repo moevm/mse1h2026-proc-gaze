@@ -26,7 +26,7 @@ async def create_student(student_create: StudentCreate):
     student = await student_crud.create_student(student_create)
     return student
 
+
 @router.post("/dump", status_code=status.HTTP_201_CREATED)
 async def insert_student_dump(student_dump: UploadFile):
     await student_crud.insert_students(student_dump)
-

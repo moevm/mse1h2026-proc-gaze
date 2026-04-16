@@ -20,7 +20,6 @@ class SuspiciousRead(BaseModel):
         }
 
 
-
 class SuspiciousInterval(BaseModel):
     time: time_type = Field(...)
     duration: int = Field(...)
@@ -32,11 +31,13 @@ class SuspiciousInterval(BaseModel):
             time_type: lambda v: v.isoformat() if v else None
         }
 
+
 class SuspiciousResult(BaseModel):
     recording_id: uuid.UUID = Field(...)
     intervals: List[SuspiciousInterval] = Field(...)
     path_processed_webcam: Optional[str] = None
     path_processed_screen: Optional[str] = None
+
     class Config:
         from_attributes = True
         json_encoders = {
