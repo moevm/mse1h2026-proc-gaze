@@ -209,7 +209,7 @@ class GazeEstimator:
         l = np.linalg.norm(output)
         output /= l if l != 0 else 1
         
-        output *= np.array([1, -1, 1])
+        output *= np.array([1, -1, -1])
         
         return output
 
