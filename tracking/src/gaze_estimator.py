@@ -2,29 +2,61 @@ import numpy as np
 import openvino as ov
 import cv2
 import os
+import torch
+from src.resnet import resnet34
+from torchvision.transforms import transforms as T
 
-from typing import List, Tuple
+from typing import List, Tuple, Union
 from src.constants import *
 
 core = ov.Core()
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+ModelType = Union[ov.CompiledModel, torch.nn.Module]
 
 class GazeEstimator:
-    def __init__(self, precision_mode: int=0, threshold: float=0.5) -> None:        
+    def __init__(self, precision_mode: int=0, threshold: float=0.5, use_torch_gaze: bool=False) -> None:        
         self.__precision = PRECISIONS[precision_mode]
-        self._face_detection_threshold = threshold
+        self.__face_detection_threshold = threshold
+        self.__use_torch_gaze = use_torch_gaze
         
-        self._face_detection_model           = self.__load_model(MODELS["face_detection"][0])
-        self._eyes_countours_detection_model = self.__load_model(MODELS["eyes_contour_detection"][0])
-        self._pupils_detection_model         = self.__load_model(MODELS["pupils_detection"][0])
-        self._head_pose_estimation_model     = self.__load_model(MODELS["head_pose_estimation"][0])
-        self._gaze_vector_estimation_model   = self.__load_model(MODELS["gaze_vector_estimation"][0])
+        self._face_detection_model           = self.__load_model("face_detection")
+        self._eyes_countours_detection_model = self.__load_model("eyes_contour_detection")
+        self._pupils_detection_model         = self.__load_model("pupils_detection")
+        self._head_pose_estimation_model     = self.__load_model("head_pose_estimation")
+        self._gaze_vector_estimation_model   = self.__load_model("gaze_vector_estimation")
         
-    def __load_model(self, model_name: str) -> ov.CompiledModel:
-        full_pth = os.path.join(PTH2MODELS, model_name, self.__precision, model_name + ".xml")
+        self.transforms = T.Compose([
+            T.ToPILImage(),                     
+            T.Resize((448, 448)),
+            T.ToTensor(),                
+            T.Normalize(
+                mean=[0.485, 0.456, 0.406],
+                std=[0.229, 0.224, 0.225]
+            ),
+            ])
         
+    def __load_model(self, model_key: str) -> ModelType:
+        model_info = MODELS[model_key]
+        
+        if model_key == "gaze_vector_estimation" and self.__use_torch_gaze:
+            full_pth = os.path.join(PTH2MODELS, "resnet", model_info[1] + ".pt")
+            if not os.path.exists(full_pth):
+                raise FileNotFoundError(f"Torch model not found: {full_pth}")
+        
+            model = resnet34(pretrained=False, num_classes=90).to(device)
+            state_dict = torch.load(full_pth, map_location=device, weights_only=True)
+            model.load_state_dict(state_dict)
+            model.eval()
+            return model
+        
+        full_pth = os.path.join(PTH2MODELS, "intel", model_info[0], self.__precision, model_info[0] + ".xml")
+        
+        if not os.path.exists(full_pth):
+            raise FileNotFoundError(f"OpenVINO model not found: {full_pth}")
+            
         model = core.read_model(full_pth)
         model = core.compile_model(model, "CPU")
-        
         return model
     
     @staticmethod
@@ -50,7 +82,7 @@ class GazeEstimator:
         faces_data = []
         for _, _, confidence, x_min, y_min, x_max, y_max in output:
             
-            if confidence < self._face_detection_threshold:
+            if confidence < self.__face_detection_threshold:
                 break
             
             x_min, y_min = int(x_min * w), int(y_min * h)
@@ -160,7 +192,7 @@ class GazeEstimator:
         
         return np.expand_dims(output, axis=0)
     
-    def __estimate_gaze_vec(self, eyes: Tuple, angles: np.ndarray) -> np.ndarray:
+    def __estimate_gaze_vec_vino(self, eyes: Tuple, angles: np.ndarray) -> np.ndarray:
         left_eye, right_eye = eyes
         
         if any([s == 0 for s in left_eye.shape]) or any([s == 0 for s in right_eye.shape]) :
@@ -177,8 +209,47 @@ class GazeEstimator:
         l = np.linalg.norm(output)
         output /= l if l != 0 else 1
         
+        output *= np.array([1, -1, 1])
+        
         return output
 
+    @torch.no_grad()
+    def __estimate_gaze_vec_torch(self, face: np.ndarray) -> np.ndarray:
+        if any([s == 0 for s in face.shape]):
+            return np.array([0, 0, 0], dtype=np.float32) 
+        
+        face_rgb = face[..., ::-1]
+        face_tensor = self.transforms(face_rgb).unsqueeze(0).to(device)
+        
+        yaw_logits, pitch_logits = self._gaze_vector_estimation_model(face_tensor)
+
+        yaw_probs   = torch.softmax(yaw_logits,   dim=1)
+        pitch_probs = torch.softmax(pitch_logits, dim=1)
+        
+        idx_tensor = torch.arange(90, dtype=torch.float32, device=device)
+        
+        yaw_pred   = torch.sum(yaw_probs   * idx_tensor, dim=1) # math expectation formula \sum{x * p(x)}
+        pitch_pred = torch.sum(pitch_probs * idx_tensor, dim=1) # math expectation
+        
+        # 1 bin = 4 degree; yaw_pred = math expectation of 90 bins => 90 bins = 360 degree; degree \in [0, 360] - 180 = [-180; +180]
+        yaw_deg   = yaw_pred   * 4.0 - 180.0
+        pitch_deg = pitch_pred * 4.0 - 180.0
+        
+        # degrees into radians
+        yaw_rad = np.deg2rad(yaw_deg.item())
+        pitch_rad = np.deg2rad(pitch_deg.item())
+        
+        # aircraft principal axes to cartesian
+        x = -np.cos(pitch_rad) * np.sin(yaw_rad)
+        y = -np.sin(pitch_rad)
+        z = np.cos(pitch_rad) * np.cos(yaw_rad)
+        
+        gaze_vec = np.array([x, y, z])
+        norm = np.linalg.norm(gaze_vec)
+        
+        gaze_vec /= norm if norm != 0 else 1
+        return gaze_vec
+    
     def estimate(self, frame: np.ndarray) -> Tuple[List, List, List, List]:
         vid_h, vid_w = frame.shape[:2] # opencv image shape h w c
         faces = self.__detect_faces(frame, (vid_h, vid_w))
@@ -197,7 +268,10 @@ class GazeEstimator:
             
             angles = self.__estimate_head_pose(face)
             
-            gaze_vec = self.__estimate_gaze_vec((left_eye, right_eye), angles)
+            if not self.__use_torch_gaze:
+                gaze_vec = self.__estimate_gaze_vec_vino((left_eye, right_eye), angles)
+            else:
+                gaze_vec = self.__estimate_gaze_vec_torch(face)
             
             gaze_vecs.append(gaze_vec)
             pupils.append((left_pupil, right_pupil))

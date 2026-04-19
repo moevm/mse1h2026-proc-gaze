@@ -1,7 +1,6 @@
 import asyncio
 import logging
 import os
-import traceback
 from typing import Any
 import torch
 
@@ -32,7 +31,7 @@ tracker: Tracker | None = None
 async def on_startup():
     global tracker
     logger.info("Loading tracker...")
-    tracker = Tracker()
+    tracker = Tracker(use_torch_gaze=True)
     tracker.gaze_mapper.eval()
     tracker.gaze_mapper.to(device)
     logger.info("Tracker ready, waiting for messages...")
