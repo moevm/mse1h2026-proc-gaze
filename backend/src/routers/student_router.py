@@ -1,3 +1,4 @@
+import uuid
 from typing import List
 
 from fastapi import APIRouter, status, Form
@@ -9,7 +10,7 @@ router = APIRouter(prefix="/students", tags=["student"])
 
 
 @router.get("/{id}", response_model=StudentRead, status_code=status.HTTP_200_OK)
-async def get_student(id: str):
+async def get_student(id: uuid.UUID):
     student = await student_crud.get_student(id)
     return student
 

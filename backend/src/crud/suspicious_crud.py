@@ -11,15 +11,9 @@ from src.util.connection import connection
 
 
 @connection
-async def get_suspicious_intervals_by_id(id: str, session: AsyncSession):
-    try:
-        recording_uuid = uuid.UUID(id)
-    except ValueError:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                            detail="Invalid recording_id format. Expected UUID.")
-
+async def get_suspicious_intervals_by_id(id: uuid.UUID, session: AsyncSession):
     suspicious_intervals = await session.execute(select(SuspiciousInterval).where(
-        SuspiciousInterval.recording_id == recording_uuid).order_by(SuspiciousInterval.time))
+        SuspiciousInterval.recording_id == id).order_by(SuspiciousInterval.time))
     suspicious_intervals = suspicious_intervals.scalars().all()
     return [SuspiciousRead.model_validate(suspicious_interval) for suspicious_interval in suspicious_intervals]
 
