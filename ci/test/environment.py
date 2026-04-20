@@ -7,7 +7,7 @@ from contextlib import contextmanager
 from typing import Generator
 
 from database import clear_db
-from docker import start_docker, stop_docker, capture_logs
+from docker_utils import start_docker, stop_docker, capture_logs
 from backend import wait_for_backend_ready
 
 logger = logging.getLogger(__name__)

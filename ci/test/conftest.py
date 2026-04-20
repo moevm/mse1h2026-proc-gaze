@@ -3,7 +3,7 @@ from typing import Generator
 import pytest
 from environment import test_environment
 from database import clear_db
-from docker import clear_shared_data
+from docker_utils import clear_shared_data
 
 logger = logging.getLogger(__name__)
 

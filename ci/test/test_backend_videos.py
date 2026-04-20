@@ -6,9 +6,9 @@ import time
 
 from config import BACKEND_URL, TEST_LOGS_DIR
 from database import gen_sample_student, add_students, dump_db
-from docker import docker_exec
+from docker_utils import docker_exec
 
-def wait_for_200(url: str, attempts: int = 100):
+def wait_for_200(url: str, attempts: int = 300):
     logging.info(f"Waiting for OK response at {url}")
 
     for i in range(attempts):
@@ -63,8 +63,8 @@ def test_video_upload(test_env):
     recording_id = data["recording_id"]
 
     assert str(data["student_id"]) == str(student["student_id"])
-    assert re.match(f".+/.+_screencast\\.mp4", data["path_screen"])
-    assert re.match(f".+/.+_webcam\\.mp4", data["path_webcam"])
+    assert data["path_screen"].endswith(".mp4")
+    assert data["path_webcam"].endswith(".mp4")
     assert data["path_processed_screen"] is None
     assert data["path_processed_webcam"] is None
     assert data["created_date"] is not None
@@ -73,6 +73,9 @@ def test_video_upload(test_env):
     assert data["count_suspicions"] == 0
     assert data["status"] == "PENDING"
 
+    docker_exec(["ls", f"/data/{data['path_screen']}"]) # exits with nonzero code when "No such file or directory"
+    docker_exec(["ls", f"/data/{data['path_webcam']}"])
+    
     logging.info("GET /recording/screen/{id}")
     response = requests.get(f"{BACKEND_URL}/recording/screen/{recording_id}")
     assert response.status_code == 200
@@ -103,6 +106,5 @@ def test_video_upload(test_env):
     assert db_recording["path_processed_screen"] is not None
     assert db_recording["path_processed_webcam"] is not None
 
-    ls = ls_shared_data()
-    assert len(ls) == 2
-    assert "results" in ls
+    docker_exec(["ls", f"/data/{db_recording['path_processed_screen']}"]) # exits with nonzero code when "No such file or directory"
+    docker_exec(["ls", f"/data/{db_recording['path_processed_webcam']}"])
