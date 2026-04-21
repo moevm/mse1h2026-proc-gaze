@@ -13,7 +13,7 @@ import main
 
 @pytest.fixture(autouse=True)
 def _patch_broker():
-    """Подменяет брокер на мок — RabbitMQ недоступен в тестах."""
+    """Подменяет брокер на мок."""
     main.broker.publish = AsyncMock()
 
     async def immediate_to_thread(func, *args, **kwargs):

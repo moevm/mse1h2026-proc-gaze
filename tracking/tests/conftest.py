@@ -25,6 +25,6 @@ def write_test_video(path, n_frames=3, width=10, height=10, fps=30.0):
 
 @pytest.fixture
 def tracker(tmp_path):
-    """Создает реальный Tracker с временной директорией данных."""
+    """Создает Tracker с временной директорией данных."""
     os.environ["DATA_DIR"] = str(tmp_path)
     return Tracker()

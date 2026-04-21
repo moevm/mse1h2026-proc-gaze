@@ -8,7 +8,7 @@ from src.gaze_estimator import GazeEstimator
 
 @pytest.fixture(scope="module")
 def estimator():
-    """Один экземпляр GazeEstimator на весь модуль (загрузка моделей дорогая)."""
+    """Один экземпляр GazeEstimator на весь модуль."""
     return GazeEstimator(precision_mode=0, threshold=0.5)
 
 
