@@ -281,11 +281,13 @@ class Tracker:
         logging.info(f"Received job with payload: {payload}")
         recording_id = str(payload["recording_id"])
 
-        screen_video_path = os.path.join("/data", payload.get("path_screen"))
-        webcam_video_path = os.path.join("/data", payload.get("path_webcam"))
-
-        if not screen_video_path or not webcam_video_path:
+        path_screen = payload.get("path_screen")
+        path_webcam = payload.get("path_webcam")
+        if not path_screen or not path_webcam:
             raise KeyError("payload must contain both 'path_screen' and 'path_webcam'")
+
+        screen_video_path = os.path.join("/data", path_screen)
+        webcam_video_path = os.path.join("/data", path_webcam)
 
         out_dir = (self._data_dir / "results" / recording_id).resolve()
         out_dir.relative_to(self._data_dir)
@@ -294,11 +296,12 @@ class Tracker:
         screen_video = Video(screen_video_path)
         webcam_video = Video(webcam_video_path)
 
-        with torch.no_grad():
-            self.process_video(screen_video, webcam_video, out_dir)
-
-        screen_video.close()
-        webcam_video.close()
+        try:
+            with torch.no_grad():
+                self.process_video(screen_video, webcam_video, out_dir)
+        finally:
+            screen_video.close()
+            webcam_video.close()
 
         intervals: list[dict[str, Any]] = []
 

@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM python:3.11-slim AS base
 
 WORKDIR /app
 
@@ -33,3 +33,10 @@ COPY src ./src
 
 ENV PYTHONUNBUFFERED=1
 CMD ["python", "main.py"]
+
+FROM base AS test
+
+RUN pip install --no-cache-dir pytest-asyncio
+COPY tests ./tests
+
+CMD ["python", "-m", "pytest", "tests", "-v"]
