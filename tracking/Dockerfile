@@ -11,12 +11,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     wget=1.25.0-2 \
     && rm -rf /var/lib/apt/lists/*
 
-ARG MODELS_URL
-RUN pip install --no-cache-dir "openvino-dev[onnx]==2024.6.0" && \
-    wget ${MODELS_URL} -O intel.tar.gz && \
-    tar -xzf intel.tar.gz -C / && \
-    rm intel.tar.gz
+COPY requirements.txt .
+RUN pip install --no-cache-dir \
+    --default-timeout=1000 \
+    --retries=5 \
+    -r requirements.txt
 
+ARG MODELS_URL
+RUN mkdir -p /models && \
+    wget -O /models/resnet.tar.gz "${MODELS_URL}resnet.tar.gz" && \
+    wget -O /models/intel.tar.gz "${MODELS_URL}models.tar.gz" && \
+    tar -xzf /models/resnet.tar.gz -C /models/ && \
+    tar -xzf /models/intel.tar.gz -C /models/ && \
+    mv /models/models /models/intel && \
+    rm -f /models/resnet.tar.gz /models/intel.tar.gz
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
