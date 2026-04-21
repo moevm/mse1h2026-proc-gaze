@@ -24,6 +24,12 @@ const router = createRouter({
             name: 'ResultView',
             component: () => import('@/views/ResultView.vue'),
             meta: { requiresAuth: true, requiresVerification: true }
+        },
+        {
+            path: '/dump-students',
+            name: 'DumpStudentView',
+            component: () => import('@/views/DumpStudentView.vue'),
+            meta: { requiresAuth: true, requiresVerification: true }
         }
     ],
 })
