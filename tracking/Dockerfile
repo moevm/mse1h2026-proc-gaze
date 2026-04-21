@@ -40,3 +40,5 @@ RUN pip install --no-cache-dir pytest-asyncio
 COPY tests ./tests
 
 CMD ["python", "-m", "pytest", "tests", "-v"]
+
+FROM base AS runtime
