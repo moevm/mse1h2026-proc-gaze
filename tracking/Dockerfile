@@ -17,16 +17,16 @@ RUN pip install --no-cache-dir \
     --retries=5 \
     -r requirements.txt
 
-ARG MODELS_URL
-RUN mkdir -p /models && \
-    wget -O /models/resnet.tar.gz "${MODELS_URL}resnet.tar.gz" && \
-    wget -O /models/intel.tar.gz "${MODELS_URL}models.tar.gz" && \
+ARG MODELS_URL=https://raw.githubusercontent.com/jcdkiki/gaze-models/v2
+RUN set -eux; \
+    models_url="${MODELS_URL%/}"; \
+    mkdir -p /models; \
+    wget -O /models/resnet.tar.gz "${models_url}/resnet.tar.gz"; \
+    wget -O /models/intel.tar.gz "${models_url}/models.tar.gz"; \
     tar -xzf /models/resnet.tar.gz -C /models/ && \
     tar -xzf /models/intel.tar.gz -C /models/ && \
     mv /models/models /models/intel && \
     rm -f /models/resnet.tar.gz /models/intel.tar.gz
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
 
 COPY main.py .
 COPY src ./src
@@ -40,3 +40,5 @@ RUN pip install --no-cache-dir pytest-asyncio
 COPY tests ./tests
 
 CMD ["python", "-m", "pytest", "tests", "-v"]
+
+FROM base AS runtime
