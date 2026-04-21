@@ -2,6 +2,8 @@ FROM python:3.11-slim AS base
 
 WORKDIR /app
 
+RUN pip install --no-cache-dir "torch==2.10.0"
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg=7:7.1.3-0+deb13u1 \
     libglib2.0-0t64=2.84.4-3~deb13u2 \
