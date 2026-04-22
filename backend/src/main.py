@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 
@@ -17,9 +18,14 @@ logging.basicConfig(
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await broker.start()
-    logging.info(f"RabbitMQ broker started at url: {RMQ_URL}")
-
+    while True:
+        try:
+            await broker.start()
+            logging.info(f"RabbitMQ broker started at url: {RMQ_URL}")
+            break
+        except Exception as e:
+            logging.warning(f"RabbitMQ not ready: {e}. Retry in 2s...")
+            await asyncio.sleep(2)
     yield
     await broker.close()
     logging.info("RabbitMQ broker stopped")
