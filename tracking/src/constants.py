@@ -1,6 +1,6 @@
 from enum import Enum
 
-PTH2MODELS = "/intel/intel"
+PTH2MODELS = "/models/"
 
 PRECISIONS = ["FP32", "FP16-INT8", "FP16"]
 
@@ -10,7 +10,7 @@ MODELS = \
     "pupils_detection":       ["landmarks-regression-retail-0009"],
     "eyes_contour_detection": ["facial-landmarks-98-detection-0001"],
     "head_pose_estimation":   ["head-pose-estimation-adas-0001"],
-    "gaze_vector_estimation": ["gaze-estimation-adas-0002"]
+    "gaze_vector_estimation": ["gaze-estimation-adas-0002", "resnet34"]
 }
 
 # hand-picked indices for OpenVINO model (no docs exists)
