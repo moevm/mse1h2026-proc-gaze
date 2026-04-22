@@ -5,6 +5,9 @@
         <button class="upload-btn" @click="goToUpload">
           + Загрузить видео
         </button>
+        <button class="upload-btn" @click="goToDump">
+          Загрузить студентов
+        </button>
         <button class="calibration-btn" @click="goToCalibration">
           Калибровка взгляда
         </button>
@@ -40,6 +43,11 @@ const records = ref([]);
 
 const goToUpload = () => {
   router.push({ name: 'UploadPlayerView' });
+};
+
+
+const goToDump = () => {
+  router.push({ name: 'DumpStudentView' });
 };
 
 const goToCalibration = () => {
