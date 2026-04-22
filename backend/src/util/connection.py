@@ -15,7 +15,7 @@ def connection(method):
                 return await method(*args, session=session, **kwargs)
             except HTTPException as e:  # TODO: нужно обрабатывать различные ошибки в зависимости от типа и оборачивать в HTTPException
                 logging.error(e.detail)
-                raise e
+                raise
             except Exception as e:
                 logging.error(e)
                 await session.rollback()

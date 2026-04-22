@@ -1,4 +1,5 @@
 import uuid
+import logging
 from http.client import HTTPException
 from typing import List
 
@@ -26,12 +27,7 @@ async def handle_upload_files(
         screencast: UploadFile = File(...),
 ):
     recording = await recording_crud.create_recording(student_id, webcam, screencast)
-    calibration_result = None
-    try:
-        calibration_result = await calibration_crud.get_calibration_result(student_id)
-    except HTTPException:
-        pass
-
+    calibration_result = await calibration_crud.get_calibration_result(student_id)
     process_request = ProcessRequest(
         recording_id=recording.recording_id,
         path_webcam=recording.path_webcam,

@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 from starlette.exceptions import HTTPException
 
+from src.crud import student_crud
 from src.models import Recording, SuspiciousInterval, RecordingStatus
 from src.schemas.recording_schema import RecordingRead
 from src.util import file_storage
@@ -80,6 +81,7 @@ async def get_processed_screen(id: uuid.UUID):
 async def create_recording(student_id: uuid.UUID,
                            webcam: UploadFile,
                            screencast: UploadFile, session: AsyncSession):
+    await student_crud.get_student(student_id)
     if webcam is None or screencast is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail="Expected 'webcam' and 'screencast' files.")

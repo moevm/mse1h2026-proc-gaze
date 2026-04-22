@@ -38,5 +38,5 @@ async def get_calibration_result(student_id: uuid.UUID, session: AsyncSession):
     result = await session.execute(stmt)
     db_calibration = result.scalar_one_or_none()
     if not db_calibration:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Calibration not found")
+        return None
     return CalibrationResultRead.model_validate(db_calibration)

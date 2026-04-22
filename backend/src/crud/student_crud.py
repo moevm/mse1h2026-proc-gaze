@@ -44,7 +44,7 @@ async def create_student(student_create: StudentCreate, session: AsyncSession) -
 
 
 @connection
-async def insert_students(student_dump: UploadFile, session: AsyncSession):
+async def insert_students(student_dump: UploadFile, session: AsyncSession) -> List[StudentRead]:
     if not student_dump.filename.endswith('.csv'):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -107,6 +107,7 @@ async def insert_students(student_dump: UploadFile, session: AsyncSession):
 
         session.add_all(students)
         await session.commit()
+        return [StudentRead.model_validate(student) for student in students]
 
     except csv.Error as e:
         raise HTTPException(
