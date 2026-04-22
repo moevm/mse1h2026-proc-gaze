@@ -45,10 +45,15 @@ async def handle_upload_files(
 @router.post("/calibration", response_model=CalibrationRead)
 async def handle_calibration(
         student_id: uuid.UUID = Form(...),
-        calibration_data: CalibrationData = Form(...),
+        calibration_data: str = Form(...),
         webcam: UploadFile = File(...),
         screencast: UploadFile = File(...)
 ):
+    try:
+        calibration_data = CalibrationData.model_validate_json(calibration_data)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid calibration_data JSON: {e}")
+
     webcam_path, screencast_path = await recording_crud.save_calibration_files(
         student_id,
         webcam,

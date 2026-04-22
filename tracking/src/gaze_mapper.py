@@ -5,12 +5,13 @@ import torch
 from tqdm import tqdm
 from torch.utils.data import DataLoader, Dataset
 from typing import List, Tuple
-from .video import Video
+from src.video import Video
 
 from torch.utils.data import random_split
 import os
 
-from .gaze_estimator import GazeEstimator
+from src.gaze_estimator import GazeEstimator
+from torchmin.optim import Minimizer
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -22,7 +23,7 @@ class GazeMapper(nn.Module):
         self.rotation_mat = torch.tensor([[-1,  0, 0 ],
                                           [ 0, -1, 0 ],
                                           [ 0,  0, 1 ]], device=device, dtype=torch.float32, requires_grad=False)
-        self.translation_vec = nn.Parameter(torch.randn(3, device=device), requires_grad=True)
+        self.translation_vec = nn.Parameter(torch.tensor([1500.0, 1000.0, 4000.0], device=device, dtype=torch.float32), requires_grad=True)
 
     def __calc_lambda(self, gaze_tensor: np.ndarray|torch.Tensor) -> np.float32:
         z_s = torch.tensor([0, 0, 1], device=device, dtype=torch.float32)
@@ -50,12 +51,58 @@ class GazeDataset(Dataset):
 
     def __len__(self) -> int:
         return len(self.data)
+    
+def compute_rmse(model: GazeMapper, loader: DataLoader) -> float:
+    total_sq_error = 0.0
+    n_samples = 0
+    
+    for vec, point in loader:
+        vec = vec.to(device)
+        point = point.to(device)
+        output = model.project(vec)
+        total_sq_error += torch.sum((point - output) ** 2).item()
+        n_samples += point.size(0)
+        
+    return (total_sq_error / n_samples) ** 0.5
         
 def calibrate(n_epochs: int, model: GazeMapper, train_loader: DataLoader, val_loader: DataLoader, verbose: bool=True) -> GazeMapper:
+    model = model.to(device).train()
+
+    optimizer = Minimizer(model.parameters(), method="bfgs", max_iter=n_epochs, tol=1e-9, disp=2 if verbose else 0)
+    
+    def closure() -> torch.Tensor:
+        optimizer.zero_grad()
+        total_sq_error = torch.tensor(0.0, device=device)
+        n_samples = 0
+        
+        for vec, point in train_loader:
+            vec = vec.to(device)
+            point = point.to(device)
+            output = model.project(vec)
+            
+            total_sq_error += torch.sum((point - output) ** 2)
+            n_samples += point.size(0)
+        l2_reg = torch.sum(torch.stack([p.pow(2).sum() for p in model.parameters()]))
+        mse = total_sq_error / n_samples
+        return mse + 1e-3 * l2_reg
+    
+    final_mse = optimizer.step(closure)
+    
+    model.eval()
+    with torch.no_grad():
+        train_rmse = compute_rmse(model, train_loader)
+        val_rmse = compute_rmse(model, val_loader)
+        
+    if verbose:
+        print(f"Optimization finished. Final MSE: {final_mse.item():.6f}")
+        print(f"Train RMSE: {train_rmse:.6f} | Val RMSE: {val_rmse:.6f}")
+        
+    return model
+
+def calibrate_stochastic(n_epochs: int, model: GazeMapper, train_loader: DataLoader, val_loader: DataLoader, verbose: bool=True) -> GazeMapper:
     model = model.to(device)
     
-    criterion = nn.MSELoss()
-    optimizer = torch.optim.SGD(model.parameters(), lr=1e-3)
+    optimizer = torch.optim.Adafactor(model.parameters(), lr=1e-3)
     
     for epoch in range(1, n_epochs+1):
         train_bar = tqdm(train_loader, f"Training {epoch}/{n_epochs}")
@@ -68,7 +115,7 @@ def calibrate(n_epochs: int, model: GazeMapper, train_loader: DataLoader, val_lo
             proj_point = model.project(gaze)
             
             optimizer.zero_grad()
-            loss = criterion(proj_point, point)
+            loss = torch.sum((point - proj_point) ** 2)
             train_total += loss.item()
             loss.backward()
             optimizer.step()
@@ -84,17 +131,25 @@ def calibrate(n_epochs: int, model: GazeMapper, train_loader: DataLoader, val_lo
                 point = point.float().to(device).squeeze() 
                 
                 proj_point = model.project(gaze)
-                loss = criterion(proj_point, point)
+                loss = torch.sum((point - proj_point) ** 2)
                 val_total += loss.item()
 
                 val_bar.set_postfix_str(f"val_loss: {val_total/i:.4f}")
-        print()
+                
+    model.eval()
+    with torch.no_grad():
+        train_rmse = compute_rmse(model, train_loader)
+        val_rmse = compute_rmse(model, val_loader)
         
+    if verbose:
+        print(f"Optimization finished. Final MSE: {train_total:.6f}")
+        print(f"Train RMSE: {train_rmse:.6f} | Val RMSE: {val_rmse:.6f}")
+            
     return model
 
 if __name__ == "__main__":
     mapper = GazeMapper()
-    gaze_estimator = GazeEstimator()
+    gaze_estimator = GazeEstimator(use_torch_gaze=True)
     
     vids = [Video(os.path.join("../calibration", p)) for p in os.listdir("../calibration") if not ".txt" in p]
     file = open("../calibration/points.txt", "r", encoding="utf-8")
@@ -117,7 +172,7 @@ if __name__ == "__main__":
     train_loader = DataLoader(train, batch_size=1, shuffle=True, num_workers=2, pin_memory=True)
     val_loader = DataLoader(val, batch_size=1, shuffle=True, num_workers=2, pin_memory=True)
     
-    epochs = 25
+    epochs = 200
     mapper = calibrate(epochs, mapper, train_loader, val_loader)
     
     torch.save(mapper, "../models/other/mapper.pth")

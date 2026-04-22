@@ -39,18 +39,27 @@
 
       <div class="suspicious-section">
         <h3 class="suspicious-title">Подозрительные моменты</h3>
-        <div v-if="suspiciousList.length === 0" class="empty-suspicious">
-          Нет подозрительных моментов
-        </div>
-        <div v-else class="suspicious-list">
-          <SuspiciousItem
-              v-for="item in suspiciousList"
-              :key="item.sus_id"
-              :time="item.time"
-              :duration="item.duration"
-              :description="item.description"
-              @click="seekTo"
-          />
+
+        <div class="suspicious-content">
+          <div class="suspicious-list-wrapper">
+            <div v-if="suspiciousList.length === 0" class="empty-suspicious">
+              Нет подозрительных моментов
+            </div>
+            <div v-else class="suspicious-list">
+              <SuspiciousItem
+                  v-for="item in suspiciousList"
+                  :key="item.sus_id"
+                  :time="item.time"
+                  :duration="item.duration"
+                  :description="item.description"
+                  @click="seekTo"
+              />
+            </div>
+          </div>
+
+          <button class="download-button" @click="downloadResult">
+            Загрузить результат
+          </button>
         </div>
       </div>
     </div>
@@ -242,6 +251,18 @@ const seekTo = (time) => {
     }
   }
 };
+
+
+const downloadResult = () => {
+  const dataStr = JSON.stringify(suspiciousList.value, null, 2);
+  const blob = new Blob([dataStr], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `recording_${recordingId}_suspicious.json`;
+  link.click();
+  URL.revokeObjectURL(url);
+};
 </script>
 
 <style scoped>
@@ -335,6 +356,17 @@ const seekTo = (time) => {
   color: #2c3e50;
 }
 
+.suspicious-content {
+  display: flex;
+  gap: 2rem;
+  align-items: flex-start;
+}
+
+.suspicious-list-wrapper {
+  flex: 1;
+  min-width: 0;
+}
+
 .empty-suspicious {
   text-align: center;
   padding: 2rem;
@@ -347,5 +379,29 @@ const seekTo = (time) => {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+}
+
+.download-button {
+  flex-shrink: 0;
+  width: 200px;
+  padding: 1rem 1.5rem;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: 0 4px 8px rgba(0, 123, 255, 0.2);
+  transition: background-color 0.2s, transform 0.1s;
+  white-space: nowrap;
+}
+
+.download-button:hover {
+  background-color: #0056b3;
+}
+
+.download-button:active {
+  transform: scale(0.98);
 }
 </style>
