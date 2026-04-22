@@ -8,7 +8,6 @@ torchvision==0.25.0
 aio-pika==9.6.1
 faststream==0.6.7
 pandas==3.0.1
-torch==2.10.0
 pytorch-minimize==0.1.0
 pytest==9.0.2
 openvino==2024.6.0
