@@ -89,9 +89,9 @@ async def create_recording(student_id: uuid.UUID,
     logging.info(
         f"student_id {student_id}, webcam type: {webcam.content_type}, screencast type: {screencast.content_type}")
 
-    now = datetime.now()
-    webcam_path = f"{student_id}/recording/{now}/webcam-{Path(webcam.filename).suffix}"
-    screencast_path = f"{student_id}/recording/{now}/screencast-{Path(screencast.filename).suffix}"
+    now = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+    webcam_path = f"{student_id}/recording/{now}/webcam{Path(webcam.filename).suffix}"
+    screencast_path = f"{student_id}/recording/{now}/screencast{Path(screencast.filename).suffix}"
     await file_storage.save_upload_file(webcam, webcam_path)
     await file_storage.save_upload_file(screencast, screencast_path)
     recording = Recording(
@@ -110,9 +110,9 @@ async def save_calibration_files(
         webcam: UploadFile,
         screencast: UploadFile
 ):
-    now = datetime.now()
-    webcam_path = f"{student_id}/calibration/{now}/webcam-{Path(webcam.filename).suffix}"
-    screencast_path = f"{student_id}/calibration/{now}/screencast-{Path(screencast.filename).suffix}"
+    now = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+    webcam_path = f"{student_id}/calibration/{now}/webcam{Path(webcam.filename).suffix}"
+    screencast_path = f"{student_id}/calibration/{now}/screencast{Path(screencast.filename).suffix}"
     await file_storage.save_upload_file(webcam, webcam_path)
     await file_storage.save_upload_file(screencast, screencast_path)
     return webcam_path, screencast_path

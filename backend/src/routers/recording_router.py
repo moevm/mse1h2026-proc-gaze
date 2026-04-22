@@ -1,6 +1,6 @@
 import uuid
-import logging
 from http.client import HTTPException
+
 from typing import List
 
 from fastapi import APIRouter, status, UploadFile, Form, File
@@ -28,6 +28,7 @@ async def handle_upload_files(
 ):
     recording = await recording_crud.create_recording(student_id, webcam, screencast)
     calibration_result = await calibration_crud.get_calibration_result(student_id)
+
     process_request = ProcessRequest(
         recording_id=recording.recording_id,
         path_webcam=recording.path_webcam,
@@ -41,10 +42,15 @@ async def handle_upload_files(
 @router.post("/calibration", response_model=CalibrationRead)
 async def handle_calibration(
         student_id: uuid.UUID = Form(...),
-        calibration_data: CalibrationData = Form(...),
+        calibration_data: str = Form(...),
         webcam: UploadFile = File(...),
         screencast: UploadFile = File(...)
 ):
+    try:
+        calibration_data = CalibrationData.model_validate_json(calibration_data)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid calibration_data JSON: {e}")
+
     webcam_path, screencast_path = await recording_crud.save_calibration_files(
         student_id,
         webcam,

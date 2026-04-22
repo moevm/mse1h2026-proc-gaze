@@ -1,23 +1,29 @@
 from src.constants import *
-from src.gaze_estimator import *
-from src.gaze_mapper import *
+from src.gaze_smoother import AdaptiveGazeKalmanSmoother, BaseGazeSmoother
+from src.gaze_estimator import GazeEstimator
+from src.gaze_mapper import GazeMapper
 
 import os
 import ffmpeg
 import logging
 import datetime
 from pathlib import Path
-from typing import Any, Optional, Dict, List
+from typing import Optional, List, Any, Dict, Tuple
+import numpy as np
+import cv2
+import torch
 
-from src.constants import JOB_STATUS_DONE, JOB_STATUS_FAILED, JOB_STATUS_IN_PROGRESS, DEFAULT_FPS
+from src.constants import JobStatus, DEFAULT_FPS
 from src.video import Video
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class Tracker:
-    def __init__(self, precision_mode: int = 0, threshold: float = 0.5) -> None:
+    def __init__(self, precision_mode: int=0, threshold: float=0.5, use_torch_gaze: bool=False) -> None:        
         self._data_dir = Path(os.environ.get("DATA_DIR", "../preprocessed")).resolve()
-        self.gaze_estimator: GazeEstimator = GazeEstimator(precision_mode, threshold)
+        self.gaze_estimator: GazeEstimator = GazeEstimator(precision_mode, threshold, use_torch_gaze)
         self.gaze_mapper: GazeMapper = GazeMapper()
+        self.gaze_smoother: BaseGazeSmoother = AdaptiveGazeKalmanSmoother(measurement_var=0.1, process_var=100.0, saccade_factor=8.0)
 
     @staticmethod
     def draw_points(image: np.ndarray, points: List) -> np.ndarray:
@@ -65,7 +71,7 @@ class Tracker:
 
         out = cv2.VideoWriter('output.mp4', cv2.VideoWriter_fourcc(*'mp4v'), cam.get(cv2.CAP_PROP_FPS), (frame_width, frame_height))
         while True:
-            ret, frame = cam.read()
+            _, frame = cam.read()
 
             new_frame = self.process_camera_frame(frame)
 
@@ -87,10 +93,12 @@ class Tracker:
             return screen_frame
 
         main_vec = gaze_vecs[0]
-        proj_p = self.gaze_mapper.project(main_vec).cpu().numpy()
-
-        x, y, _ = proj_p
+        proj_p = self.gaze_mapper.project(main_vec).cpu().numpy()[:2]
+        
         if not all(np.isnan(proj_p)):
+            smoothed_p = self.gaze_smoother.update(proj_p)
+            
+            x, y = smoothed_p
             x = int(x)
             y = int(y)
             res = self.draw_points(screen_frame, [(x, y)])
@@ -244,8 +252,6 @@ class Tracker:
             logger.info("Failed to re-encode output videos.")
             raise e
         finally:
-            # TODO: пока оставляем сырые видосы, нужна более аккуратная постобработка и проверка
-            pass
             camera_out_raw.unlink(missing_ok=True)
             screen_out_raw.unlink(missing_ok=True)
         
@@ -279,11 +285,13 @@ class Tracker:
         logging.info(f"Received job with payload: {payload}")
         recording_id = str(payload["recording_id"])
 
-        screen_video_path = os.path.join("/data", payload.get("path_screen"))
-        webcam_video_path = os.path.join("/data", payload.get("path_webcam"))
-
-        if not screen_video_path or not webcam_video_path:
+        path_screen = payload.get("path_screen")
+        path_webcam = payload.get("path_webcam")
+        if not path_screen or not path_webcam:
             raise KeyError("payload must contain both 'path_screen' and 'path_webcam'")
+
+        screen_video_path = os.path.join("/data", path_screen)
+        webcam_video_path = os.path.join("/data", path_webcam)
 
         out_dir = (self._data_dir / "results" / recording_id).resolve()
         out_dir.relative_to(self._data_dir)
@@ -292,11 +300,12 @@ class Tracker:
         screen_video = Video(screen_video_path)
         webcam_video = Video(webcam_video_path)
 
-        with torch.no_grad():
-            self.process_video(screen_video, webcam_video, out_dir)
-
-        screen_video.close()
-        webcam_video.close()
+        try:
+            with torch.no_grad():
+                self.process_video(screen_video, webcam_video, out_dir)
+        finally:
+            screen_video.close()
+            webcam_video.close()
 
         intervals: list[dict[str, Any]] = []
 

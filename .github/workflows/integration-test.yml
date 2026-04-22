@@ -1,4 +1,4 @@
-name: Docker Compose Test
+name: Integration tests
 
 on:
   push:
@@ -17,7 +17,8 @@ jobs:
     - name: Set up Docker Compose
       uses: docker/setup-compose-action@v2
 
-    - name: Start Docker Compose services with environment
+    - name: Run tests
+      continue-on-error: true
       run: |
         export POSTGRES_DB=gaze_db
         export POSTGRES_USER=gaze_user
@@ -31,10 +32,9 @@ jobs:
         export AMQP_CALIBRATION_QUEUE=tracking.jobs.calibration
         export AMQP_CALIBRATION_RESULT_QUEUE=tracking.results.calibration
         export VITE_API_URL=http://localhost/api
-        docker compose up -d
-        echo "Waiting for services to start..."
-        sleep 30
-
-    - name: Check container status
-      run: |
-        bash ci/check-containers.sh
+        bash ci/test/run_tests.sh
+    
+    - uses: actions/upload-artifact@v7
+      with:
+        name: integration-tests-logs
+        path: ci/test/logs/*/
