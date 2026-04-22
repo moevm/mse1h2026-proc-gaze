@@ -11,14 +11,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     wget=1.25.0-2 \
     && rm -rf /var/lib/apt/lists/*
 
-<<<<<<< HEAD
-ARG MODELS_URL
-RUN wget ${MODELS_URL} -O intel.tar.gz && \
-    tar -xzf intel.tar.gz -C / && \
-    rm intel.tar.gz
 
-=======
->>>>>>> main
 COPY requirements.txt .
 RUN pip install --no-cache-dir \
     --default-timeout=1000 \
