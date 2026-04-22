@@ -8,6 +8,9 @@
         <button class="upload-btn" @click="goToDump">
           Загрузить студентов
         </button>
+        <button class="calibration-btn" @click="goToCalibration">
+          Калибровка взгляда
+        </button>
       </div>
 
       <h2 class="list-title">Загруженные видео</h2>
@@ -32,7 +35,7 @@
 import {onMounted, ref} from 'vue';
 import router from "@/router/index.js";
 import RecordItem from "@/components/main_view/RecordItem.vue";
-import {convertRecordingReadToRecording, createRecording} from "@/types/recordings"
+import {convertRecordingReadToRecording} from "@/types/recordings"
 import {mainApi} from "@/api";
 
 const records = ref([]);
@@ -45,6 +48,10 @@ const goToUpload = () => {
 
 const goToDump = () => {
   router.push({ name: 'DumpStudentView' });
+};
+
+const goToCalibration = () => {
+  router.push({ name: 'CalibrationView' });
 };
 
 const toggleExpand = (recording_id) => {
@@ -93,9 +100,11 @@ onMounted(async () => {
   display: flex;
   gap: 1rem;
   justify-content: center;
+  flex-wrap: wrap;
 }
 
-.upload-btn {
+.upload-btn,
+.calibration-btn {
   display: inline-block;
   padding: 0.75rem 2rem;
   font-size: 1.2rem;
@@ -109,7 +118,8 @@ onMounted(async () => {
   box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
 }
 
-.upload-btn:hover {
+.upload-btn:hover,
+.calibration-btn:hover {
   background-color: #0056b3;
   transform: scale(1.02);
 }
