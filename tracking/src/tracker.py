@@ -1,4 +1,5 @@
 from src.constants import *
+from src.gaze_smoother import AdaptiveGazeKalmanSmoother, BaseGazeSmoother
 from src.gaze_estimator import GazeEstimator
 from src.gaze_mapper import GazeMapper
 
@@ -23,6 +24,7 @@ class Tracker:
         self._data_dir = Path(os.environ.get("DATA_DIR", "../preprocessed")).resolve()
         self.gaze_estimator: GazeEstimator = GazeEstimator(precision_mode, threshold, use_torch_gaze)
         self.gaze_mapper: GazeMapper = GazeMapper()
+        self.gaze_smoother: BaseGazeSmoother = AdaptiveGazeKalmanSmoother(measurement_var=0.1, process_var=100.0, saccade_factor=8.0)
 
     @staticmethod
     def draw_points(image: np.ndarray, points: List) -> np.ndarray:
@@ -89,13 +91,19 @@ class Tracker:
         gaze_vecs, _, _, _ = gaze_info
 
         main_vec = gaze_vecs[0]
-        proj_p = self.gaze_mapper.project(main_vec).cpu().numpy()
-
-        x, y, _ = proj_p
-        x = int(x)
-        y = int(y)
-        res = self.draw_points(screen_frame, [(x, y)])
-        return res
+        proj_p = self.gaze_mapper.project(main_vec).cpu().numpy()[:2]
+        
+        if not all(np.isnan(proj_p)):
+            smoothed_p = self.gaze_smoother.update(proj_p)
+            
+            x, y = smoothed_p
+            x = int(x)
+            y = int(y)
+            res = self.draw_points(screen_frame, [(x, y)])
+            return res
+        else:
+            print("detected suspicious frame")
+            return screen_frame
 
     def _resolve_path(self, relative_path: str) -> Path:
         """
