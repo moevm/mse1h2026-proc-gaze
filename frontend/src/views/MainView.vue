@@ -32,7 +32,8 @@
 </template>
 
 <script setup>
-import {onMounted, ref} from 'vue';
+import { onMounted, onBeforeUnmount, ref } from 'vue';
+import { emitter } from '@/eventBus';
 import router from "@/router/index.js";
 import RecordItem from "@/components/main_view/RecordItem.vue";
 import {convertRecordingReadToRecording} from "@/types/recordings"
@@ -61,6 +62,15 @@ const toggleExpand = (recording_id) => {
   }
 };
 
+
+const handleStatusChange = ({ recording_id, status }) => {
+  const record = records.value.find((r) => r.recording_id === recording_id);
+  if (record) {
+    record.status = status;
+  }
+};
+
+
 onMounted(async () => {
   try {
     const data = await mainApi.getRecordings();
@@ -68,6 +78,12 @@ onMounted(async () => {
   } catch (error) {
     console.error('Error with uploading records:', error);
   }
+  emitter.on('recording:status-changed', handleStatusChange);
+});
+
+
+onBeforeUnmount(() => {
+  emitter.off('recording:status-changed', handleStatusChange);
 });
 
 </script>
