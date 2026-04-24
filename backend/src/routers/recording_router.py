@@ -1,4 +1,6 @@
 import uuid
+from http.client import HTTPException
+
 from typing import List
 
 from fastapi import APIRouter, status, UploadFile, Form, File
@@ -25,11 +27,7 @@ async def handle_upload_files(
         screencast: UploadFile = File(...),
 ):
     recording = await recording_crud.create_recording(student_id, webcam, screencast)
-    calibration_result = None
-    try:
-        calibration_result = await calibration_crud.get_calibration_result(student_id)
-    except Exception:
-        pass
+    calibration_result = await calibration_crud.get_calibration_result(student_id)
 
     process_request = ProcessRequest(
         recording_id=recording.recording_id,
@@ -63,7 +61,6 @@ async def handle_calibration(
                         webcam_path=webcam_path,
                         screencast_path=screencast_path,
                         calibration_data=calibration_data), jobs_calibration_queue)
-
 
 
 @router.get("/screen/{id}")

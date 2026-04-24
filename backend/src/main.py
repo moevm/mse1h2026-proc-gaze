@@ -1,10 +1,10 @@
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.consumers import suspicious_consumer, calibration_consumer
 from src.routers import recording_router, notification_router, suspicious_router, student_router
 from src.util.broker import broker
 from src.util.config import RMQ_URL
@@ -18,9 +18,14 @@ logging.basicConfig(
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await broker.start()
-    logging.info(f"RabbitMQ broker started at url: {RMQ_URL}")
-
+    while True:
+        try:
+            await broker.start()
+            logging.info(f"RabbitMQ broker started at url: {RMQ_URL}")
+            break
+        except Exception as e:
+            logging.warning(f"RabbitMQ not ready: {e}. Retry in 2s...")
+            await asyncio.sleep(2)
     yield
     await broker.close()
     logging.info("RabbitMQ broker stopped")

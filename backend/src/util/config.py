@@ -16,7 +16,6 @@ AMQP_QUEUE = os.getenv("AMQP_QUEUE")
 if not AMQP_QUEUE:
     raise ValueError("AMQP_QUEUE environment variable is not set")
 
-
 AMQP_RESULT_QUEUE = os.getenv("AMQP_RESULT_QUEUE")
 if not AMQP_RESULT_QUEUE:
     raise ValueError("AMQP_RESULT_QUEUE environment variable is not set")
@@ -28,5 +27,3 @@ if not AMQP_QUEUE:
 AMQP_CALIBRATION_RESULT_QUEUE = os.getenv("AMQP_CALIBRATION_RESULT_QUEUE")
 if not AMQP_CALIBRATION_RESULT_QUEUE:
     raise ValueError("AMQP_CALIBRATION_RESULT_QUEUE environment variable is not set")
-
-

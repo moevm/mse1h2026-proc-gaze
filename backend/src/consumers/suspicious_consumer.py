@@ -3,10 +3,10 @@ from datetime import datetime, timezone
 
 from faststream.rabbit import RabbitQueue
 
-from src.models import NotificationType
 from src.crud import notification_crud
-from src.crud import suspicious_crud
 from src.crud import recording_crud
+from src.crud import suspicious_crud
+from src.models import NotificationType
 from src.schemas.notification_schema import NotificationCreate
 from src.schemas.suspicious_schema import SuspiciousResult
 from src.util.broker import broker

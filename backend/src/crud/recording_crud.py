@@ -1,6 +1,7 @@
 import logging
 import uuid
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Optional
 
 from fastapi import UploadFile
@@ -9,11 +10,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 from starlette.exceptions import HTTPException
 
-from src.schemas.recording_schema import RecordingRead
+from src.crud import student_crud
 from src.models import Recording, SuspiciousInterval, RecordingStatus
-from src.util.connection import connection
+from src.schemas.recording_schema import RecordingRead
 from src.util import file_storage
-from pathlib import Path
+from src.util.connection import connection
 
 
 @connection
@@ -80,6 +81,7 @@ async def get_processed_screen(id: uuid.UUID):
 async def create_recording(student_id: uuid.UUID,
                            webcam: UploadFile,
                            screencast: UploadFile, session: AsyncSession):
+    await student_crud.get_student(student_id)
     if webcam is None or screencast is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail="Expected 'webcam' and 'screencast' files.")
@@ -102,10 +104,11 @@ async def create_recording(student_id: uuid.UUID,
     await session.refresh(recording)
     return RecordingRead.model_validate(recording)
 
+
 async def save_calibration_files(
-    student_id: uuid.UUID,
-    webcam: UploadFile,
-    screencast: UploadFile
+        student_id: uuid.UUID,
+        webcam: UploadFile,
+        screencast: UploadFile
 ):
     now = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
     webcam_path = f"{student_id}/calibration/{now}/webcam{Path(webcam.filename).suffix}"
@@ -117,10 +120,10 @@ async def save_calibration_files(
 
 @connection
 async def mark_recording_done(
-    recording_id: uuid.UUID,
-    path_processed_webcam: Optional[str] = None,
-    path_processed_screen: Optional[str] = None,
-    session: AsyncSession = None,
+        recording_id: uuid.UUID,
+        path_processed_webcam: Optional[str] = None,
+        path_processed_screen: Optional[str] = None,
+        session: AsyncSession = None,
 ):
     recording = (
         await session.execute(
