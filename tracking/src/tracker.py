@@ -13,7 +13,6 @@ import numpy as np
 import cv2
 import torch
 
-from src.constants import JobStatus, DEFAULT_FPS
 from src.video import Video
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
