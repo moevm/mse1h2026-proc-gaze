@@ -89,8 +89,8 @@ async def handle_calibration(message: dict[str, Any]):
         g = torch.Generator().manual_seed(0)
         train, val = random_split(dataset, [0.9, 0.1], g)
         
-        train_loader = DataLoader(train, batch_size=1, shuffle=True, num_workers=0, pin_memory=True)
-        val_loader = DataLoader(val, batch_size=1, shuffle=True, num_workers=0, pin_memory=True)
+        train_loader = DataLoader(train, batch_size=1, shuffle=True, num_workers=0)
+        val_loader = DataLoader(val, batch_size=1, shuffle=True, num_workers=0)
         
         epochs = 15
         
@@ -104,7 +104,7 @@ async def handle_calibration(message: dict[str, Any]):
         result = \
         {
             "student_id": message["student_id"],
-            "result": tracker.gaze_mapper.translation_vec.cpu().numpy().tolist()
+            "result": tracker.gaze_mapper.translation_vec.detach().numpy().tolist()
         }
     except Exception as e: 
         logger.exception("Error processing calibration data: %s", e)
