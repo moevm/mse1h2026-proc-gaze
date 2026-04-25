@@ -90,6 +90,9 @@ class Tracker:
     def process_screen_frame(self, screen_frame: np.ndarray, gaze_info: Tuple[np.ndarray]) -> np.ndarray:
         gaze_vecs, _, _, _ = gaze_info
 
+        if len(gaze_vecs) == 0:
+            return screen_frame
+    
         main_vec = gaze_vecs[0]
         proj_p = self.gaze_mapper.project(main_vec).cpu().numpy()[:2]
         
