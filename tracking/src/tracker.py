@@ -33,6 +33,9 @@ class Tracker:
         return image
 
     def process_camera_frame(self, frame: np.ndarray, gaze_info: Tuple[np.ndarray], draw_bbox: bool = False) -> np.ndarray:
+        if not gaze_info:
+            return frame
+        
         gaze_vecs, pupils, offsets, eye_bboxes = gaze_info
 
         res = np.copy(frame)
@@ -88,6 +91,9 @@ class Tracker:
         cv2.destroyAllWindows()
 
     def process_screen_frame(self, screen_frame: np.ndarray, gaze_info: Tuple[np.ndarray]) -> np.ndarray:
+        if not gaze_info:
+            return frame
+        
         gaze_vecs, _, _, _ = gaze_info
 
         if len(gaze_vecs) == 0:
@@ -222,35 +228,38 @@ class Tracker:
             frames_cnt = min(len(camera_video), len(screen_video))
             for frame_id, (camera_frame, screen_frame) in enumerate(zip(camera_video, screen_video)):
                 gaze_vecs, pupils, offsets, eye_bboxes = self.gaze_estimator.estimate(camera_frame)
+                gaze_info = None
+                
                 current_time = frame_id / screen_video.fps
                 
                 if not gaze_vecs:
                     suspicious_interval_duration += frame_duration
                     suspicious_reasons.add(IntervalDescription.NO_GAZE)
-                    continue
+
                 elif len(gaze_vecs) > 1:
                     suspicious_interval_duration += frame_duration
                     suspicious_reasons.add(IntervalDescription.MULTIPLE_GAZES)
-                    continue
+                    
                 elif any(np.isnan(self.gaze_mapper.project(gaze_vecs[0]).cpu().numpy())):
                     suspicious_interval_duration += frame_duration
                     suspicious_reasons.add(IntervalDescription.OFF_SCREEN)
-                    continue
-                
-                if suspicious_interval_duration > 1e-6 and suspicious_reasons:
-                    interval_start = current_time - suspicious_interval_duration
-                    time_str = str(timedelta(seconds=int(interval_start)))
                     
-                    intervals.append({
-                        "time": time_str,
-                        "duration": suspicious_interval_duration,
-                        "description": ", ".join(sorted([r for r in suspicious_reasons]))
-                    })
+                else:
+                    gaze_info = (gaze_vecs, pupils, offsets, eye_bboxes)
                     
-                    suspicious_interval_duration = 0.0
-                    suspicious_reasons.clear()
+                    if suspicious_interval_duration > 1e-6 and suspicious_reasons:
+                        interval_start = current_time - suspicious_interval_duration
+                        time_str = str(timedelta(seconds=int(interval_start)))
+                        
+                        intervals.append({
+                            "time": time_str,
+                            "duration": suspicious_interval_duration,
+                            "description": ", ".join(sorted([r for r in suspicious_reasons]))
+                        })
+                        
+                        suspicious_interval_duration = 0.0
+                        suspicious_reasons.clear()
 
-                gaze_info = (gaze_vecs, pupils, offsets, eye_bboxes)
                 processed_camera = self.process_camera_frame(camera_frame, gaze_info, draw_bbox=True)
                 processed_screen = self.process_screen_frame(screen_frame, gaze_info)
                 camera_writer.write(processed_camera)
