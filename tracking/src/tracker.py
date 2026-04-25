@@ -92,7 +92,7 @@ class Tracker:
 
     def process_screen_frame(self, screen_frame: np.ndarray, gaze_info: Tuple[np.ndarray]) -> np.ndarray:
         if not gaze_info:
-            return frame
+            return screen_frame
         
         gaze_vecs, _, _, _ = gaze_info
 
