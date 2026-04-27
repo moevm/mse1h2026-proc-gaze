@@ -17,7 +17,7 @@ async def get_notifications(session: AsyncSession):
     notifications = await session.execute(select(Notification).where(Notification.sent_date == None))
     notifications = notifications.scalars().all()
     for notification in notifications:
-        notification.sent_date = datetime.now(timezone.utc)
+        notification.sent_date = datetime.now(timezone.utc).replace(tzinfo=None)
     await session.commit()
     return [NotificationRead.model_validate(notification) for notification in notifications]
 
