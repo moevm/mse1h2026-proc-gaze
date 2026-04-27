@@ -10,6 +10,8 @@ from src.util.broker import broker
 from src.util.config import RMQ_URL
 from src.util.database import engine
 
+from src.consumers import calibration_consumer, suspicious_consumer  # noqa: F401
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
