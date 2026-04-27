@@ -1,9 +1,8 @@
 import uuid
-from http.client import HTTPException
 
 from typing import List
 
-from fastapi import APIRouter, status, UploadFile, Form, File
+from fastapi import APIRouter, status, UploadFile, Form, File, HTTPException
 from faststream.rabbit import RabbitQueue
 
 from src.crud import calibration_crud
@@ -56,11 +55,12 @@ async def handle_calibration(
         webcam,
         screencast)
 
-    await broker.publish(
-        CalibrationRead(student_id=student_id,
-                        webcam_path=webcam_path,
-                        screencast_path=screencast_path,
-                        calibration_data=calibration_data), jobs_calibration_queue)
+    calibration = CalibrationRead(student_id=student_id,
+                                  webcam_path=webcam_path,
+                                  screencast_path=screencast_path,
+                                  calibration_data=calibration_data)
+    await broker.publish(calibration, jobs_calibration_queue)
+    return calibration
 
 
 @router.get("/screen/{id}")
