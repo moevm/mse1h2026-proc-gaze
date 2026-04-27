@@ -7,6 +7,8 @@ import pytest
 
 os.environ.setdefault("AMQP_URL", "amqp://guest:guest@localhost/")
 os.environ.setdefault("DATA_DIR", "/tmp/tracker-test-main")
+os.environ.setdefault("AMQP_CALIBRATION_QUEUE", "tracking.calibration.jobs")
+os.environ.setdefault("AMQP_CALIBRATION_RESULT_QUEUE", "tracking.calibration.results")
 
 import main
 
@@ -116,3 +118,24 @@ async def test_handle_job_publishes_to_results_queue():
 
     call_kwargs = main.broker.publish.await_args[1]
     assert call_kwargs["queue"] is main.results_queue
+
+
+@pytest.mark.asyncio
+async def test_handle_calibration_job_publishes_to_calibration_results_queue():
+    """Результат калибровки должен публиковаться в calibration results queue."""
+
+    await main.on_startup()
+    expected_result = {
+        "student_id": "student-1",
+        "result": [1.0, 2.0, 3.0],
+    }
+    main.tracker.process_calibration = Mock(return_value=expected_result)
+
+    await main.handle_calibration_job({"student_id": "student-1"})
+
+    main.tracker.process_calibration.assert_called_once_with({"student_id": "student-1"})
+    main.broker.publish.assert_awaited_once()
+    published = main.broker.publish.await_args[0][0]
+    assert published == expected_result
+    call_kwargs = main.broker.publish.await_args[1]
+    assert call_kwargs["queue"] is main.calibration_results_queue
