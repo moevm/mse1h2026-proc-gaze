@@ -57,7 +57,7 @@ async def handle_calibration(
     calibration = CalibrationRead(student_id=student_id,
                                   webcam_path=webcam_path,
                                   screencast_path=screencast_path,
-                                  calibration_data=calibration_data)
+                                  calibration_data=parsed_calibration)
     await broker.publish(calibration, jobs_calibration_queue)
     return calibration
 
