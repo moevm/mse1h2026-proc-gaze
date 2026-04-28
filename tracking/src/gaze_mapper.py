@@ -5,12 +5,7 @@ import torch
 from tqdm import tqdm
 from torch.utils.data import DataLoader, Dataset
 from typing import List, Tuple
-from src.video import Video
 
-from torch.utils.data import random_split
-import os
-
-from src.gaze_estimator import GazeEstimator
 from torchmin.optim import Minimizer
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -146,33 +141,3 @@ def calibrate_stochastic(n_epochs: int, model: GazeMapper, train_loader: DataLoa
         print(f"Train RMSE: {train_rmse:.6f} | Val RMSE: {val_rmse:.6f}")
             
     return model
-
-if __name__ == "__main__":
-    mapper = GazeMapper()
-    gaze_estimator = GazeEstimator(use_torch_gaze=True)
-    
-    vids = [Video(os.path.join("../calibration", p)) for p in os.listdir("../calibration") if not ".txt" in p]
-    file = open("../calibration/points.txt", "r", encoding="utf-8")
-    points = [np.array(list(map(float, l.split()))) for l in file.readlines()]
-    
-    data = []
-    for v, p in zip(vids, points):
-        vecs = []
-        for frame in v:
-            gaze_vec, _, _, _ = gaze_estimator.estimate(frame)
-            vecs.append((gaze_vec[0], p))
-            
-        data.extend(vecs)
-    
-    dataset = GazeDataset(data)
-    
-    g = torch.Generator().manual_seed(0)
-    train, val = random_split(dataset, [0.9, 0.1], g)
-    
-    train_loader = DataLoader(train, batch_size=1, shuffle=True, num_workers=2, pin_memory=True)
-    val_loader = DataLoader(val, batch_size=1, shuffle=True, num_workers=2, pin_memory=True)
-    
-    epochs = 200
-    mapper = calibrate(epochs, mapper, train_loader, val_loader)
-    
-    torch.save(mapper, "../models/other/mapper.pth")

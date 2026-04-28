@@ -46,14 +46,13 @@ async def handle_calibration(
         screencast: UploadFile = File(...)
 ):
     try:
-        calibration_data = CalibrationData.model_validate_json(calibration_data)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Invalid calibration_data JSON: {e}")
+        parsed_calibration = CalibrationData.model_validate_json(calibration_data)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid input data: {e}")
 
     webcam_path, screencast_path = await recording_crud.save_calibration_files(
-        student_id,
-        webcam,
-        screencast)
+        student_id, webcam, screencast
+    )
 
     calibration = CalibrationRead(student_id=student_id,
                                   webcam_path=webcam_path,
