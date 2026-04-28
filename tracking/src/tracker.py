@@ -240,7 +240,7 @@ class Tracker:
                     suspicious_interval_duration += frame_duration
                     suspicious_reasons.add(IntervalDescription.MULTIPLE_GAZES)
                     
-                elif any(np.isnan(self.gaze_mapper.project(gaze_vecs[0]).cpu().numpy())):
+                elif any(projection := np.isnan(self.gaze_mapper.project(gaze_vecs[0]).cpu().numpy())) or abs(projection[0]) > screen_video.width or abs(projection[1]) > screen_video.height:
                     suspicious_interval_duration += frame_duration
                     suspicious_reasons.add(IntervalDescription.OFF_SCREEN)
                     
