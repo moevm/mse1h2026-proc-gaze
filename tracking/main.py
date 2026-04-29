@@ -66,7 +66,7 @@ async def handle_job(message: dict[str, Any]):
 
     await broker.publish(result, queue=results_queue)
 
-@broker.subscriber(calibration_queue)
+@broker.subscriber(calibration_jobs_queue)
 async def handle_calibration(message: dict[str, Any]):
     try:
         webcam_pth = os.path.join("/data", message["webcam_path"])
