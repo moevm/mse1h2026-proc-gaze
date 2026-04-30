@@ -27,10 +27,20 @@ const props = defineProps({
 const emit = defineEmits(['click']);
 
 const formatDuration = (seconds) => {
-  if (seconds === undefined || seconds === null) return '--:--';
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.floor(seconds % 60);
-  return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  if (seconds === undefined || seconds === null) return '--:--.---';
+  const totalMs = Math.round(seconds * 1000);
+  const hrs = Math.floor(totalMs / 3600000);
+  const mins = Math.floor((totalMs % 3600000) / 60000);
+  const secs = Math.floor((totalMs % 60000) / 1000);
+  const ms = totalMs % 1000;
+  let result = '';
+  if (hrs > 0) {
+    result += `${hrs.toString().padStart(2, '0')}:`;
+  }
+  result += `${mins.toString().padStart(2, '0')}:${secs
+      .toString()
+      .padStart(2, '0')}.${ms.toString().padStart(3, '0')}`;
+  return result;
 };
 
 const formattedDuration = computed(() => formatDuration(props.duration));
@@ -47,7 +57,6 @@ const onClick = () => {
   }
   emit('click', totalSeconds);
 };
-
 </script>
 
 <style scoped>
