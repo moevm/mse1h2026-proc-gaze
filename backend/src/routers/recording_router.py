@@ -51,9 +51,8 @@ async def handle_calibration(
         raise HTTPException(status_code=400, detail=f"Invalid input data: {e}")
 
     webcam_path, screencast_path = await recording_crud.save_calibration_files(
-        student_id,
-        webcam,
-        screencast)
+        student_id, webcam, screencast
+    )
 
     calibration = CalibrationRead(student_id=student_id,
                                   webcam_path=webcam_path,

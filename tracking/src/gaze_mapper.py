@@ -5,6 +5,7 @@ import torch
 from tqdm import tqdm
 from torch.utils.data import DataLoader, Dataset
 from typing import List, Tuple
+
 from torchmin.optim import Minimizer
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
