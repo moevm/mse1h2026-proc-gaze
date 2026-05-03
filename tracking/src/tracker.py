@@ -1,7 +1,7 @@
 from src.constants import *
-from src.gaze_smoother import AdaptiveGazeKalmanSmoother, BaseGazeSmoother
+from src.gaze_smoother import GazeSmoother, BaseGazeSmoother, AdaptiveGazeKalmanSmoother
 from src.gaze_estimator import GazeEstimator
-from src.gaze_mapper import GazeMapper
+from src.gaze_mapper import GazeDataset, GazeMapper, calibrate
 
 import os
 from datetime import timedelta
@@ -13,6 +13,7 @@ from typing import Optional, List, Any, Dict, Tuple
 import numpy as np
 import cv2
 import torch
+from torch.utils.data import DataLoader, random_split
 
 from src.constants import IntervalDescription
 from src.video import Video
@@ -24,7 +25,7 @@ class Tracker:
         self._data_dir = Path(os.environ.get("DATA_DIR", "../preprocessed")).resolve()
         self.gaze_estimator: GazeEstimator = GazeEstimator(precision_mode, threshold, use_torch_gaze)
         self.gaze_mapper: GazeMapper = GazeMapper()
-        self.gaze_smoother: BaseGazeSmoother = AdaptiveGazeKalmanSmoother(measurement_var=0.1, process_var=100.0, saccade_factor=8.0)
+        self.gaze_smoother: BaseGazeSmoother = AdaptiveGazeKalmanSmoother(process_var=0.05, measurement_var=1000.0, saccade_factor=20.0, saccade_threshold=50.0)
 
     @staticmethod
     def draw_points(image: np.ndarray, points: List) -> np.ndarray:
@@ -105,9 +106,10 @@ class Tracker:
         if not all(np.isnan(proj_p)):
             smoothed_p = self.gaze_smoother.update(proj_p)
             
-            x, y = smoothed_p
+            x, y = proj_p
             x = int(x)
             y = int(y)
+            print(x, y)
             res = self.draw_points(screen_frame, [(x, y)])
             return res
         else:
@@ -134,6 +136,69 @@ class Tracker:
 
     def _to_relative_path(self, path: Path) -> str:
         return path.resolve().relative_to(self._data_dir).as_posix()
+
+    def _apply_calibration_result(self, result: List[float]) -> torch.Tensor:
+        if len(result) != 3:
+            raise ValueError(f"Calibration result must contain exactly 3 values, got {len(result)}")
+
+        previous = self.gaze_mapper.translation_vec.detach().clone()
+        translation = torch.tensor(result, device=device, dtype=torch.float32)
+        with torch.no_grad():
+            self.gaze_mapper.translation_vec.copy_(translation)
+        return previous
+
+    def process_calibration(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        logging.info(f"Received calibration job with payload: {payload}")
+
+        student_id = str(payload["student_id"])
+        calibration_data = payload["calibration_data"]
+        clicks = calibration_data.get("clicks") or []
+        if not clicks:
+            raise ValueError("calibration_data.clicks must not be empty")
+
+        webcam_path = self._resolve_path(payload["webcam_path"])
+        decoded_webcam_path = webcam_path.with_name(f"{webcam_path.stem}_decoded.mp4")
+        self.convert_codec(webcam_path, decoded_webcam_path)
+
+        webcam_video = Video(decoded_webcam_path)
+
+        try:
+            data = []
+            for click in clicks:
+                frame = webcam_video.frame_at_sec(float(click["time"]))
+                gaze_vecs, _, _, _ = self.gaze_estimator.estimate(frame)
+                if len(gaze_vecs) == 0:
+                    raise ValueError("Gaze estimation failed. Frame does not contain detectable gaze vectors.")
+
+                point = np.array([int(click["x"]), int(click["y"]), 0.0], dtype=np.float32)
+                data.append((gaze_vecs[0], point))
+        finally:
+            webcam_video.close()
+            decoded_webcam_path.unlink(missing_ok=True)
+
+        if not data:
+            raise ValueError("No usable gaze vectors were found for calibration")
+
+        mapper = GazeMapper()
+        dataset = GazeDataset(data)
+        if len(dataset) == 1:
+            train = val = dataset
+        else:
+            generator = torch.Generator().manual_seed(0)
+            val_size = max(1, round(len(dataset) * 0.1))
+            train_size = len(dataset) - val_size
+            train, val = random_split(dataset, [train_size, val_size], generator)
+
+        train_loader = DataLoader(train, batch_size=1, shuffle=True, num_workers=0)
+        val_loader = DataLoader(val, batch_size=1, shuffle=True, num_workers=0)
+
+        mapper = calibrate(15, mapper, train_loader, val_loader, verbose=False)
+        result = [float(v) for v in mapper.translation_vec.detach().cpu().tolist()]
+
+        return {
+            "student_id": student_id,
+            "result": result,
+        }
     
     @staticmethod
     def convert_codec(input_path: Path, output_path: Path) -> None:
@@ -240,7 +305,10 @@ class Tracker:
                     suspicious_interval_duration += frame_duration
                     suspicious_reasons.add(IntervalDescription.MULTIPLE_GAZES)
                     
-                elif any(projection := np.isnan(self.gaze_mapper.project(gaze_vecs[0]).cpu().numpy())) or abs(projection[0]) > screen_video.width or abs(projection[1]) > screen_video.height:
+                elif any(np.isnan(projection := self.gaze_mapper.project(gaze_vecs[0]).cpu().numpy())) \
+                    or abs(projection[0]) > screen_video.width \
+                    or abs(projection[1]) > screen_video.height \
+                    or projection[0] < 0 or projection[1] < 0:
                     suspicious_interval_duration += frame_duration
                     suspicious_reasons.add(IntervalDescription.OFF_SCREEN)
                     
@@ -292,7 +360,7 @@ class Tracker:
             intervals.append({
                 "time": time_str,
                 "duration": suspicious_interval_duration,
-                "description": ", ".join(sorted([r.name for r in suspicious_reasons]))
+                "description": ", ".join(sorted([r for r in suspicious_reasons]))
             })
             
         logger.info("Frames were processed sucessfully. Re-encoding output videos...")
@@ -352,10 +420,24 @@ class Tracker:
         screen_video = Video(screen_video_path)
         webcam_video = Video(webcam_video_path)
 
+        previous_translation = None
+        calibration_result = payload.get("calibration_result")
+        if calibration_result:
+            result_values = (
+                calibration_result.get("result")
+                if isinstance(calibration_result, dict)
+                else getattr(calibration_result, "result", None)
+            )
+            if result_values:
+                previous_translation = self._apply_calibration_result(result_values)
+
         try:
             with torch.no_grad():
                 intervals: List[Dict[str, Any]] = self.process_video(screen_video, webcam_video, out_dir)
         finally:
+            if previous_translation is not None:
+                with torch.no_grad():
+                    self.gaze_mapper.translation_vec.copy_(previous_translation)
             screen_video.close()
             webcam_video.close()
 
