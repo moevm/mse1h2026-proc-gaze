@@ -165,10 +165,24 @@ const onCircleClick = (circle) => {
 
   const elapsedSeconds = (Date.now() - recordingStartTime.value) / 1000
 
+  const innerW = window.innerWidth
+  const innerH = window.innerHeight
+  const outerW = window.outerWidth;
+  const outerH = window.outerHeight;
+
+  const delta_x = Math.round((outerW - innerW) / 2);
+  const delta_y = outerH - innerH;
+  
+  const screenX = window.screenX ?? window.screenLeft ?? 0
+  const screenY = window.screenY ?? window.screenTop ?? 0
+
+  const screenPointX = Math.round(circle.x + 40 + screenX + delta_x);
+  const screenPointY = Math.round(circle.y + 40 + screenY + delta_y * 0.85);
+
   calibrationData.value.clicks.push({
     time: elapsedSeconds,
-    x: circle.x + 40,
-    y: circle.y + 40
+    x: screenPointX,
+    y: screenPointY
   })
 
   circle.active = false
