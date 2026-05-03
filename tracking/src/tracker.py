@@ -185,8 +185,7 @@ class Tracker:
 
         mapper = calibrate(150, mapper, train_loader, train_loader, verbose=True)
         result = [float(v) for v in mapper.translation_vec.detach().cpu().tolist()]
-        logging.info(result)
-        
+        logging.info(result)        
         return {
             "student_id": student_id,
             "result": result,

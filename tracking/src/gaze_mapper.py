@@ -18,8 +18,7 @@ class GazeMapper(nn.Module):
         self.rotation_mat = torch.tensor([[-1,  0, 0 ],
                                           [ 0, -1, 0 ],
                                           [ 0,  0, 1 ]], device=device, dtype=torch.float32, requires_grad=False)
-        self.translation_vec = nn.Parameter(torch.randn(3, device=device, dtype=torch.float32), requires_grad=True)
-        self.scale = nn.Parameter(torch.tensor([600.0], device=device, dtype=torch.float32), requires_grad=True)
+        self.translation_vec = nn.Parameter(torch.tensor([1000, 1000, 1000], device=device, dtype=torch.float32), requires_grad=True)
         
     def project(self, gaze_tensor: torch.Tensor) -> torch.Tensor:
         if gaze_tensor.dim() == 1:
@@ -29,7 +28,7 @@ class GazeMapper(nn.Module):
 
         z_s = torch.tensor([0, 0, 1], device=device, dtype=torch.float32)
 
-        numerator = torch.dot(z_s, self.translation_vec * self.scale)
+        numerator = torch.dot(z_s, self.translation_vec)
 
         rotated = gaze_tensor @ self.rotation_mat.T
 
@@ -41,7 +40,7 @@ class GazeMapper(nn.Module):
         lambda_ = numerator / denom
 
         points = self.rotation_mat @ (lambda_.unsqueeze(1) * gaze_tensor).T
-        points = points.T + self.translation_vec * self.scale
+        points = points.T + self.translation_vec
 
         return points[:, :2]
     
@@ -91,7 +90,8 @@ def calibrate(
     all_vecs, all_points = [], []
     for v, p in train_loader:
         all_vecs.append(v)
-        all_points.append(p)
+        all_points.append(p[:, :2])
+        
     batch_vecs = torch.cat(all_vecs).to(device).float()
     batch_points = torch.cat(all_points).to(device).float()
 
@@ -102,11 +102,7 @@ def calibrate(
 
         loss_xy = nn.functional.smooth_l1_loss(pred, batch_points, reduction="mean")
         
-        t = model.translation_vec
-        loss_scale = (torch.norm(t) - 1.0) ** 2
-        
-        loss = loss_xy + 0.5 * loss_scale
-
+        loss = loss_xy + 1e-3 * torch.sum(model.translation_vec.abs()) 
         return loss
 
     final_loss = optimizer.step(closure)
