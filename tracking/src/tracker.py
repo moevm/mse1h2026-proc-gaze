@@ -108,7 +108,6 @@ class Tracker:
             x, y = proj_p
             x = int(x)
             y = int(y)
-            print(x, y)
             res = self.draw_points(screen_frame, [(x, y)])
             return res
         else:
@@ -170,7 +169,7 @@ class Tracker:
                     raise ValueError("Gaze estimation failed. Frame does not contain detectable gaze vectors.")
 
                 point = np.array([int(click["x"]), int(click["y"])], dtype=np.float32)
-                data.append((gaze_vecs[0], point))
+                data.append((gaze_vecs[0], point[:2]))
         finally:
             webcam_video.close()
             decoded_webcam_path.unlink(missing_ok=True)

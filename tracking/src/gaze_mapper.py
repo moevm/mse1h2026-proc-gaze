@@ -62,7 +62,7 @@ def compute_rmse(model: GazeMapper, loader: DataLoader) -> float:
     
     for vec, point in loader:
         vec = vec.to(device)
-        point = point.to(device)
+        point = point.to(device)[:, :2]
         output = model.project(vec)
         total_sq_error += torch.sum((point - output) ** 2).item()
         n_samples += point.shape[0]
@@ -102,7 +102,7 @@ def calibrate(
 
         loss_xy = nn.functional.smooth_l1_loss(pred, batch_points, reduction="mean")
         
-        loss = loss_xy + 1e-3 * torch.sum(model.translation_vec.abs()) 
+        loss = loss_xy + 2e-3 * torch.sum(model.translation_vec.abs()) 
         return loss
 
     final_loss = optimizer.step(closure)
