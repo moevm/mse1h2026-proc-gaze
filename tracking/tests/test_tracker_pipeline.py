@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-import os
-from pathlib import Path
+from unittest.mock import Mock
 
-import numpy as np
 import pytest
 
 from conftest import write_test_video
+from src.constants import IntervalDescription
 from src.video import Video
 
 
@@ -137,53 +136,67 @@ def test_process_video_with_different_frame_counts(tracker, tmp_path):
     assert (out_dir / "screen.mp4").exists()
 
 
+def test_process_video_final_suspicious_interval_uses_description_values(tracker, tmp_path):
+    """Подозрительный интервал в конце видео должен иметь человекочитаемое описание."""
+
+    out_dir = tmp_path / "results" / "rec-suspicious-final"
+    screen_path = str(tmp_path / "screen.mp4")
+    camera_path = str(tmp_path / "camera.mp4")
+    write_test_video(screen_path, n_frames=2, width=10, height=10, fps=2.0)
+    write_test_video(camera_path, n_frames=2, width=10, height=10, fps=2.0)
+    tracker.gaze_estimator.estimate = Mock(return_value=([], [], [], []))
+
+    screen_video = Video(screen_path)
+    camera_video = Video(camera_path)
+
+    try:
+        intervals = tracker.process_video(screen_video, camera_video, out_dir)
+    finally:
+        screen_video.close()
+        camera_video.close()
+
+    assert len(intervals) == 1
+    assert intervals[0]["time"] == "0:00:00"
+    assert intervals[0]["duration"] == pytest.approx(1.0)
+    assert intervals[0]["description"] == IntervalDescription.NO_GAZE.value
+
+
 def test_process_job_builds_result(tracker, tmp_path):
     """Успешная обработка задания должна вернуть результат с нужными полями."""
 
-    os.makedirs("/data/test_job", exist_ok=True)
-    write_test_video("/data/test_job/screen.mp4", n_frames=3, width=10, height=10)
-    write_test_video("/data/test_job/webcam.mp4", n_frames=3, width=10, height=10)
+    write_test_video(tmp_path / "test_job" / "screen.mp4", n_frames=3, width=10, height=10)
+    write_test_video(tmp_path / "test_job" / "webcam.mp4", n_frames=3, width=10, height=10)
+    tracker.process_video = Mock(return_value=[])
 
-    try:
-        result = tracker.process_job({
-            "recording_id": "rec-42",
-            "path_screen": "test_job/screen.mp4",
-            "path_webcam": "test_job/webcam.mp4",
-        })
+    result = tracker.process_job({
+        "recording_id": "rec-42",
+        "path_screen": "test_job/screen.mp4",
+        "path_webcam": "test_job/webcam.mp4",
+    })
 
-        assert result["recording_id"] == "rec-42"
-        assert isinstance(result["intervals"], list)
-        assert "path_processed_webcam" in result
-        assert "path_processed_screen" in result
-        assert "camera.mp4" in result["path_processed_webcam"]
-        assert "screen.mp4" in result["path_processed_screen"]
-    finally:
-        Path("/data/test_job/screen.mp4").unlink(missing_ok=True)
-        Path("/data/test_job/webcam.mp4").unlink(missing_ok=True)
-        Path("/data/test_job").rmdir()
+    assert result["recording_id"] == "rec-42"
+    assert isinstance(result["intervals"], list)
+    assert "path_processed_webcam" in result
+    assert "path_processed_screen" in result
+    assert "camera.mp4" in result["path_processed_webcam"]
+    assert "screen.mp4" in result["path_processed_screen"]
 
 
 def test_process_job_creates_output_files(tracker, tmp_path):
     """process_job должен создать файлы результатов на диске."""
 
-    os.makedirs("/data/test_job_files", exist_ok=True)
-    write_test_video("/data/test_job_files/screen.mp4", n_frames=3, width=10, height=10)
-    write_test_video("/data/test_job_files/webcam.mp4", n_frames=3, width=10, height=10)
+    write_test_video(tmp_path / "test_job_files" / "screen.mp4", n_frames=3, width=10, height=10)
+    write_test_video(tmp_path / "test_job_files" / "webcam.mp4", n_frames=3, width=10, height=10)
 
-    try:
-        result = tracker.process_job({
-            "recording_id": "rec-files",
-            "path_screen": "test_job_files/screen.mp4",
-            "path_webcam": "test_job_files/webcam.mp4",
-        })
+    tracker.process_job({
+        "recording_id": "rec-files",
+        "path_screen": "test_job_files/screen.mp4",
+        "path_webcam": "test_job_files/webcam.mp4",
+    })
 
-        out_dir = tmp_path / "results" / "rec-files"
-        assert (out_dir / "camera.mp4").exists()
-        assert (out_dir / "screen.mp4").exists()
-    finally:
-        Path("/data/test_job_files/screen.mp4").unlink(missing_ok=True)
-        Path("/data/test_job_files/webcam.mp4").unlink(missing_ok=True)
-        Path("/data/test_job_files").rmdir()
+    out_dir = tmp_path / "results" / "rec-files"
+    assert (out_dir / "camera.mp4").exists()
+    assert (out_dir / "screen.mp4").exists()
 
 
 def test_process_job_raises_key_error_when_paths_are_missing(tracker):

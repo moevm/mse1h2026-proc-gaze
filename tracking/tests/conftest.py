@@ -11,7 +11,6 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from src.tracker import Tracker
-from src.video import Video
 
 
 def write_test_video(path, n_frames=3, width=10, height=10, fps=30.0):

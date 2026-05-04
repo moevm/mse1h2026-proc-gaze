@@ -139,3 +139,15 @@ async def test_handle_calibration_job_publishes_to_calibration_results_queue():
     assert published == expected_result
     call_kwargs = main.broker.publish.await_args[1]
     assert call_kwargs["queue"] is main.calibration_results_queue
+
+
+@pytest.mark.asyncio
+async def test_handle_calibration_job_does_not_publish_invalid_result_on_error():
+    """При ошибке калибровки сервис не должен публиковать невалидный result=[]."""
+
+    await main.on_startup()
+    main.tracker.process_calibration = Mock(side_effect=RuntimeError("boom"))
+
+    await main.handle_calibration_job({"student_id": "student-err"})
+
+    main.broker.publish.assert_not_awaited()
