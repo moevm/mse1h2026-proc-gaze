@@ -104,9 +104,7 @@ class Tracker:
         proj_p = self.gaze_mapper.project(main_vec).cpu().numpy()[:2]
         
         if not all(np.isnan(proj_p)):
-            smoothed_p = self.gaze_smoother.update(proj_p)
-            
-            x, y = smoothed_p
+            x, y = proj_p
             x = int(x)
             y = int(y)
             res = self.draw_points(screen_frame, [(x, y)])
