@@ -38,10 +38,6 @@ cp .env.example .env
 docker compose up --build
 ```
 
-3. В корне проекта создайте или положите скачанный `.env` файл. Данный файл содержит секреты проекта (пароли, пути, и другие чувствительные данные). Секреты доступны:
-- В презентации итерации: [URL](https://github.com/moevm/mse1h2026-proc-gaze/blob/reports/docs/iteration2.pdf)
-- На диске: [URL](https://drive.google.com/file/d/1MjwPY6dhHxsIQyn2ENxEP7L7F7w3_ZBR/view?usp=sharing)
-
 По окончанию сборки, проект будет развернут на портах:
 - 80 - клиентская часть
 - 8000 - серверная часть
