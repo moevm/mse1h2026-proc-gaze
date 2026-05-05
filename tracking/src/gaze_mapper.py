@@ -21,6 +21,8 @@ class GazeMapper(nn.Module):
         self.translation_vec = nn.Parameter(torch.tensor([1000, 1000, 1000], device=device, dtype=torch.float32), requires_grad=True)
         
     def project(self, gaze_tensor: torch.Tensor) -> torch.Tensor:
+        if isinstance(gaze_tensor, np.ndarray):
+            gaze_tensor = torch.as_tensor(gaze_tensor, dtype=torch.float32, device=device)
         if gaze_tensor.dim() == 1:
             gaze_tensor = gaze_tensor.unsqueeze(0)
 
