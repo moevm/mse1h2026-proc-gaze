@@ -17,6 +17,9 @@ __pycache__/
 *.pth
 *.ckpt
 
+# Videos
+recorded_videos
+
 
 # C extensions
 *.so
