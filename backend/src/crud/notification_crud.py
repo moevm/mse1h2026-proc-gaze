@@ -1,15 +1,17 @@
+import asyncio
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import HTTPException
+from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from starlette import status
 
 from src.models import Notification
 from src.schemas.notification_schema import NotificationCreate
 from src.schemas.notification_schema import NotificationRead
 from src.util.connection import connection
+
+notification_queue = asyncio.Queue()
 
 
 @connection
@@ -23,12 +25,12 @@ async def get_notifications(session: AsyncSession):
 
 
 @connection
-async def delete_notification(id: uuid.UUID, session: AsyncSession):
-    response = await session.execute(select(Notification).where(Notification.notification_id == id))
+async def delete_notification(notification_id: uuid.UUID, session: AsyncSession):
+    response = await session.execute(select(Notification).where(Notification.notification_id == notification_id))
     notification = response.scalar_one_or_none()
     if notification is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail=f"notification not found with uuid: {id}")
+                            detail=f"notification not found with uuid: {notification_id}")
     await session.delete(notification)
     await session.commit()
 
@@ -42,3 +44,4 @@ async def create_notification(notification_create: NotificationCreate, session: 
     )
     session.add(notification)
     await session.commit()
+    await notification_queue.put(NotificationRead.model_validate(notification))

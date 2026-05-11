@@ -9,9 +9,9 @@ from src.util.connection import connection
 
 
 @connection
-async def get_suspicious_intervals_by_id(id: uuid.UUID, session: AsyncSession):
+async def get_suspicious_intervals_by_id(recording_id: uuid.UUID, session: AsyncSession):
     suspicious_intervals = await session.execute(select(SuspiciousInterval).where(
-        SuspiciousInterval.recording_id == id).order_by(SuspiciousInterval.time))
+        SuspiciousInterval.recording_id == recording_id).order_by(SuspiciousInterval.time))
     suspicious_intervals = suspicious_intervals.scalars().all()
     return [SuspiciousRead.model_validate(suspicious_interval) for suspicious_interval in suspicious_intervals]
 

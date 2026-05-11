@@ -1,8 +1,7 @@
 import logging
 from functools import wraps
 
-from starlette import status
-from starlette.exceptions import HTTPException
+from fastapi import HTTPException, status
 
 from src.util.database import SessionLocal
 

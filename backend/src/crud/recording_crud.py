@@ -4,11 +4,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
-from fastapi import UploadFile
+from fastapi import UploadFile, status, HTTPException
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
-from starlette import status
-from starlette.exceptions import HTTPException
 
 from src.crud import student_crud
 from src.models import Recording, SuspiciousInterval, RecordingStatus
@@ -34,8 +32,8 @@ async def get_recordings(session: AsyncSession):
 
 
 @connection
-async def delete_recording(id: uuid.UUID, session: AsyncSession):
-    recording = (await session.execute(select(Recording).where(Recording.recording_id == id))).scalar_one_or_none()
+async def delete_recording(recording_id: uuid.UUID, session: AsyncSession):
+    recording = (await session.execute(select(Recording).where(Recording.recording_id == recording_id))).scalar_one_or_none()
     if not recording:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Recording not found")
     await session.delete(recording)
@@ -43,35 +41,34 @@ async def delete_recording(id: uuid.UUID, session: AsyncSession):
 
 
 @connection
-async def get_recording(id: uuid.UUID, session: AsyncSession):
-    print(id)
-    recording = await session.execute(select(Recording).where(Recording.recording_id == id))
+async def get_recording(recording_id: uuid.UUID, session: AsyncSession):
+    recording = await session.execute(select(Recording).where(Recording.recording_id == recording_id))
     recording = recording.scalar_one_or_none()
     if recording is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail=f"recording not found with uuid: {id}")
+                            detail=f"recording not found with uuid: {recording_id}")
     return recording
 
 
-async def get_webcam(id: uuid.UUID):
-    recording = await get_recording(id)
+async def get_webcam(recording_id: uuid.UUID):
+    recording = await get_recording(recording_id)
     return await file_storage.get_file(recording.path_webcam)
 
 
-async def get_screen(id: uuid.UUID):
-    recording = await get_recording(id)
+async def get_screen(recording_id: uuid.UUID):
+    recording = await get_recording(recording_id)
     return await file_storage.get_file(recording.path_screen)
 
 
-async def get_processed_webcam(id: uuid.UUID):
-    recording = await get_recording(id)
+async def get_processed_webcam(recording_id: uuid.UUID):
+    recording = await get_recording(recording_id)
     if not recording.path_processed_webcam:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Processed webcam video not ready yet")
     return await file_storage.get_file(recording.path_processed_webcam)
 
 
-async def get_processed_screen(id: uuid.UUID):
-    recording = await get_recording(id)
+async def get_processed_screen(recording_id: uuid.UUID):
+    recording = await get_recording(recording_id)
     if not recording.path_processed_screen:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Processed screen video not ready yet")
     return await file_storage.get_file(recording.path_processed_screen)
