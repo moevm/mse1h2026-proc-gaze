@@ -10,13 +10,13 @@ from src.models import Notification
 from src.schemas.notification_schema import NotificationCreate
 from src.schemas.notification_schema import NotificationRead
 from src.util.connection import connection
+from src.util.connection_manager import ConnectionManager
 
-notification_queue = asyncio.Queue()
-
+notification_manager = ConnectionManager[NotificationRead]
 
 @connection
 async def get_notifications(session: AsyncSession):
-    notifications = await session.execute(select(Notification).where(Notification.sent_date == None))
+    notifications = await session.execute(select(Notification).where(Notification.sent_date is None))
     notifications = notifications.scalars().all()
     for notification in notifications:
         notification.sent_date = datetime.now(timezone.utc).replace(tzinfo=None)
@@ -44,4 +44,4 @@ async def create_notification(notification_create: NotificationCreate, session: 
     )
     session.add(notification)
     await session.commit()
-    await notification_queue.put(NotificationRead.model_validate(notification))
+    await notification_manager.broadcast(NotificationRead.model_validate(notification))
