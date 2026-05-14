@@ -12,7 +12,7 @@ from src.schemas.notification_schema import NotificationRead
 from src.util.connection import connection
 from src.util.connection_manager import ConnectionManager
 
-notification_manager = ConnectionManager[NotificationRead]
+notification_manager = ConnectionManager[NotificationRead]()
 
 @connection
 async def get_notifications(session: AsyncSession):

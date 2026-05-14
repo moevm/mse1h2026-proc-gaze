@@ -26,17 +26,23 @@ async def delete_notification(notification_id: uuid.UUID):
 @router.get("/stream")
 async def notification_stream(request: Request):
     notification_queue = asyncio.Queue()
-    notification_manager.add_connection(notification_queue)
-    try:
-        async def event_generator():
+    await notification_manager.add_connection(notification_queue)
+    async def event_generator():
+        try:
             while True:
                 if await request.is_disconnected():
                     break
-                notification = await notification_queue.get()
-                yield (
-                    f"event: notification\n"
-                    f"data: {notification.model_dump_json()}\n\n"
-                )
-        return EventSourceResponse(event_generator())
-    finally:
-        await notification_manager.remove_connection(notification_queue)
+                try:
+                    notification = await asyncio.wait_for(
+                        notification_queue.get(), timeout=15.0
+                    )
+                    yield (
+                        f"event: notification\n"
+                        f"data: {notification.model_dump_json()}\n\n"
+                    )
+                except asyncio.TimeoutError:
+                    yield ": heartbeat\n\n"
+        finally:
+            await notification_manager.remove_connection(notification_queue)
+
+    return EventSourceResponse(event_generator())
