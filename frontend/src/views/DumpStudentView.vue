@@ -10,8 +10,8 @@
         <div class="csv-format-info">
           <p class="format-label">Формат CSV файла:</p>
           <pre class="csv-format-example">first_name,last_name,patronymic,group
-fn_1,ln_1,p_1,g_1
-fn_2,ln_2,p_2,g_2</pre>
+Иван,Иванов,Иванович,1111
+Кирилл,Пак,,3384</pre>
         </div>
         <CsvUploadArea
             :fileName="csvFileName"
