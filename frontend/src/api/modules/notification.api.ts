@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '../config';
 import { apiJsonClient } from '../config';
 
 export interface NotificationRead {
@@ -16,3 +17,8 @@ class NotificationApi {
 }
 
 export const notificationApi = new NotificationApi();
+
+
+export function createNotificationEventSource(): EventSource {
+    return new EventSource(`${API_BASE_URL}/notification/stream`);
+}
