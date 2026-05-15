@@ -9,9 +9,9 @@ from src.crud import student_crud
 router = APIRouter(prefix="/students", tags=["student"])
 
 
-@router.get("/{id}", response_model=StudentRead, status_code=status.HTTP_200_OK)
-async def get_student(id: uuid.UUID):
-    student = await student_crud.get_student(id)
+@router.get("/{student_id}", response_model=StudentRead, status_code=status.HTTP_200_OK)
+async def get_student(student_id: uuid.UUID):
+    student = await student_crud.get_student(student_id)
     return student
 
 
