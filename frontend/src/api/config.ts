@@ -1,6 +1,6 @@
 import axios, { AxiosInstance } from 'axios';
 
-const API_BASE_URL = '/api';
+export const API_BASE_URL = '/api';
 
 const createJsonApiClient = (): AxiosInstance => {
     const instance = axios.create({
