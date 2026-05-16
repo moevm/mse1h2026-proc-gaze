@@ -1,59 +1,51 @@
-import { ref, onUnmounted } from 'vue';
-import { notificationApi, NotificationRead } from '@/api/modules/notification.api';
+import { ref, onMounted, onUnmounted } from 'vue';
+import type { NotificationRead } from '@/api';
+import { createNotificationEventSource } from '@/api';
 import { emitter } from '@/eventBus';
 
 export function useNotifications() {
     const pendingNotifications = ref<NotificationRead[]>([]);
-    let pollingTimer: ReturnType<typeof setInterval> | null = null;
+    let eventSource: EventSource | null = null;
 
-    const fetchNotifications = async () => {
-        try {
-            const data = await notificationApi.getNotifications();
-            if (data.length > 0) {
-                pendingNotifications.value.push(...data);
-                data.forEach((notif) => {
-                    if (notif.type === 'DONE') {
-                        emitter.emit('recording:status-changed', {
-                            recording_id: notif.recording_id,
-                            status: 'DONE',
-                        });
-                    }
-                });
+    const connectSSE = () => {
+        eventSource = createNotificationEventSource();
+
+        eventSource.addEventListener('notification', (event) => {
+            try {
+                const notification: NotificationRead = JSON.parse(event.data);
+                pendingNotifications.value.push(notification);
+                if (notification.type === 'DONE') {
+                    emitter.emit('recording:status-changed', {
+                        recording_id: notification.recording_id,
+                        status: 'DONE',
+                    });
+                }
+            } catch (err) {
+                console.error('Failed to parse SSE notification:', err);
             }
-        } catch (error) {
-            console.error('Notification polling error:', error);
-        }
+        });
+
+        eventSource.onerror = (err) => {
+            console.error('SSE connection error:', err);
+        };
     };
 
-    const startPolling = (intervalMs = 10000) => {
-        fetchNotifications();
-        pollingTimer = setInterval(fetchNotifications, intervalMs);
-    };
-
-    const stopPolling = () => {
-        if (pollingTimer) {
-            clearInterval(pollingTimer);
-            pollingTimer = null;
-        }
-    };
-
-    const removeNotification = (id: string) => {
-        const index = pendingNotifications.value.findIndex(
-            (n) => n.notification_id === id
-        );
-        if (index !== -1) {
-            pendingNotifications.value.splice(index, 1);
-        }
-    };
+    onMounted(() => {
+        connectSSE();
+    });
 
     onUnmounted(() => {
-        stopPolling();
+        if (eventSource) {
+            eventSource.close();
+            eventSource = null;
+        }
     });
 
     return {
         pendingNotifications,
-        startPolling,
-        stopPolling,
-        removeNotification,
+        removeNotification: (id: string) => {
+            const index = pendingNotifications.value.findIndex(n => n.notification_id === id);
+            if (index !== -1) pendingNotifications.value.splice(index, 1);
+        },
     };
 }

@@ -7,13 +7,8 @@
 </template>
 
 <script setup>
-import { onMounted } from 'vue';
 import { useNotifications } from '@/composables/useNotifications';
 import NotificationToast from '@/components/NotificationToast.vue';
 
-const { pendingNotifications, startPolling, removeNotification } = useNotifications();
-
-onMounted(() => {
-  startPolling(10000);
-});
+const { pendingNotifications, removeNotification } = useNotifications();
 </script>
