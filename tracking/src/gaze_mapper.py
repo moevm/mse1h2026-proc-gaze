@@ -20,20 +20,20 @@ class GazeMapper(nn.Module):
                                           [ 0,  0, 1 ]], device=device, dtype=torch.float32, requires_grad=False)
         self.translation_vec = nn.Parameter(torch.tensor([1500.0, 1000.0, 4000.0], device=device, dtype=torch.float32), requires_grad=True)
 
-    def __calc_lambda(self, gaze_tensor: np.ndarray|torch.Tensor) -> np.float32:
+    def __calc_lambda(self, gaze_tensor: np.ndarray|torch.Tensor) -> torch.Tensor:
         z_s = torch.tensor([0, 0, 1], device=device, dtype=torch.float32)
         z_g = self.rotation_mat @ z_s
             
         t_g = -self.rotation_mat @ self.translation_vec
-        l = (z_g @ t_g) / (z_g @ gaze_tensor)
+        scale = (z_g @ t_g) / (z_g @ gaze_tensor)
         
-        return l
+        return scale
         
-    def project(self, gaze_vec: np.ndarray) -> np.ndarray:
+    def project(self, gaze_vec: np.ndarray) -> torch.Tensor:
         gaze_tensor = torch.as_tensor(gaze_vec, dtype=torch.float32, device=device).squeeze()
-        l = self.__calc_lambda(gaze_tensor)
+        scale = self.__calc_lambda(gaze_tensor)
 
-        return self.rotation_mat @ (l * gaze_tensor) + self.translation_vec
+        return self.rotation_mat @ (scale * gaze_tensor) + self.translation_vec
     
 class GazeDataset(Dataset):
     def __init__(self, data: List[Tuple[np.ndarray, np.ndarray]]):

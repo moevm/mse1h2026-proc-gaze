@@ -1,4 +1,3 @@
-from src.constants import *
 from src.gaze_smoother import AdaptiveGazeKalmanSmoother, BaseGazeSmoother
 from src.gaze_estimator import GazeEstimator
 from src.gaze_mapper import GazeDataset, GazeMapper, calibrate
@@ -19,6 +18,7 @@ from src.constants import IntervalDescription
 from src.video import Video
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+logger = logging.getLogger(__name__)
 
 class Tracker:
     def __init__(self, precision_mode: int=0, threshold: float=0.5, use_torch_gaze: bool=False) -> None:        
@@ -52,7 +52,7 @@ class Tracker:
                 cv2.rectangle(res, (x1 + x_offset, y1 + y_offset), (x2 + x_offset, y2 + y_offset), (255, 0, 0), 2)
                 self.draw_points(res, [(left_pupil[0] + x_offset, left_pupil[1] + y_offset), (right_pupil[0] + x_offset, right_pupil[1] + y_offset)])
 
-            l = 25
+            arrow_len = 25
             rx, ry = right_pupil
             lx, ly = left_pupil
 
@@ -60,7 +60,7 @@ class Tracker:
 
             vx, vy = gaze_vec[:2]
 
-            ex, ey = sx + vx * l, sy + vy * l
+            ex, ey = sx + vx * arrow_len, sy + vy * arrow_len
 
             global_start = (int(sx + x_offset), int(sy + y_offset))
             global_end = (int(ex + x_offset), int(ey + y_offset))
@@ -101,16 +101,18 @@ class Tracker:
             return screen_frame
     
         main_vec = gaze_vecs[0]
-        proj_p = self.gaze_mapper.project(main_vec).cpu().numpy()[:2]
+        proj_p = self._project_to_numpy(main_vec)[:2]
         
-        if not all(np.isnan(proj_p)):
-            x, y = proj_p
+        if np.all(np.isfinite(proj_p)):
+            smoothed_p = self.gaze_smoother.update(proj_p)
+            
+            x, y = smoothed_p
             x = int(x)
             y = int(y)
             res = self.draw_points(screen_frame, [(x, y)])
             return res
         else:
-            print("detected suspicious frame")
+            logger.debug("Detected suspicious frame: projected gaze point is not finite")
             return screen_frame
 
     def _resolve_path(self, relative_path: str) -> Path:
@@ -144,8 +146,29 @@ class Tracker:
             self.gaze_mapper.translation_vec.copy_(translation)
         return previous
 
+    def _project_to_numpy(self, gaze_vec: np.ndarray) -> np.ndarray:
+        return self.gaze_mapper.project(gaze_vec).detach().cpu().numpy()
+
+    @staticmethod
+    def _append_suspicious_interval(
+        intervals: List[Dict[str, Any]],
+        start_sec: float,
+        duration_sec: float,
+        reasons: set[IntervalDescription],
+    ) -> None:
+        if duration_sec <= 1e-6 or not reasons:
+            return
+
+        intervals.append({
+            "time": str(timedelta(seconds=int(start_sec))),
+            "duration": duration_sec,
+            "description": ", ".join(
+                reason.value for reason in sorted(reasons, key=lambda reason: reason.value)
+            ),
+        })
+
     def process_calibration(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        logging.info(f"Received calibration job with payload: {payload}")
+        logger.info(f"Received calibration job with payload: {payload}")
 
         student_id = str(payload["student_id"])
         calibration_data = payload["calibration_data"]
@@ -214,7 +237,8 @@ class Tracker:
                 .run(overwrite_output=True, capture_stdout=True, capture_stderr=True)
             )
         except ffmpeg.Error as e:
-            print(e.stderr.decode("utf-8", errors="replace") if e.stderr else str(e))
+            stderr = e.stderr.decode("utf-8", errors="replace") if e.stderr else str(e)
+            logger.error("ffmpeg failed to convert %s -> %s: %s", input_path, output_path, stderr)
             raise
 
     _LAST_PROCESS_ID = 0
@@ -243,13 +267,13 @@ class Tracker:
             - screen.mp4: обработанное видео экрана (точка проекции взгляда).
         """
 
-        logger = logging.getLogger(f"process_video {Tracker.gen_unique_process_id()}")
-        logger.info("Started processing videos:")
-        logger.info(f"Screen: {screen_video.info}")
-        logger.info(f"Camera: {camera_video.info}")
+        process_logger = logging.getLogger(f"process_video {Tracker.gen_unique_process_id()}")
+        process_logger.info("Started processing videos:")
+        process_logger.info(f"Screen: {screen_video.info}")
+        process_logger.info(f"Camera: {camera_video.info}")
 
         if out_dir is None:
-            return
+            return []
 
         out_dir = out_dir.resolve()
         out_dir.mkdir(parents=True, exist_ok=True)
@@ -278,12 +302,12 @@ class Tracker:
 
         intervals: List[Dict[str, Any]] = []
         
-        logger.info("Processing frames...")
+        process_logger.info("Processing frames...")
         try:
             frame_duration = 1.0 / screen_video.fps
             suspicious_interval_duration = 0.0
-            suspicious_reasons: set = set()
-            total_time = datetime.timedelta(seconds=camera_video.duration_sec)
+            suspicious_reasons: set[IntervalDescription] = set()
+            total_time = datetime.timedelta(seconds=camera_video.duration_sec or 0.0)
             total_time = total_time // 1000000 * 1000000                        # remove microseconds
             last_log_time = datetime.datetime.now()
 
@@ -302,25 +326,21 @@ class Tracker:
                     suspicious_interval_duration += frame_duration
                     suspicious_reasons.add(IntervalDescription.MULTIPLE_GAZES)
                     
-                elif any(np.isnan(self.gaze_mapper.project(gaze_vecs[0]).cpu().numpy())):
+                elif np.any(~np.isfinite(self._project_to_numpy(gaze_vecs[0]))):
                     suspicious_interval_duration += frame_duration
                     suspicious_reasons.add(IntervalDescription.OFF_SCREEN)
                     
                 else:
                     gaze_info = (gaze_vecs, pupils, offsets, eye_bboxes)
                     
-                    if suspicious_interval_duration > 1e-6 and suspicious_reasons:
-                        interval_start = current_time - suspicious_interval_duration
-                        time_str = str(timedelta(seconds=int(interval_start)))
-                        
-                        intervals.append({
-                            "time": time_str,
-                            "duration": suspicious_interval_duration,
-                            "description": ", ".join(sorted([r for r in suspicious_reasons]))
-                        })
-                        
-                        suspicious_interval_duration = 0.0
-                        suspicious_reasons.clear()
+                    self._append_suspicious_interval(
+                        intervals,
+                        current_time - suspicious_interval_duration,
+                        suspicious_interval_duration,
+                        suspicious_reasons,
+                    )
+                    suspicious_interval_duration = 0.0
+                    suspicious_reasons.clear()
 
                 processed_camera = self.process_camera_frame(camera_frame, gaze_info, draw_bbox=True)
                 processed_screen = self.process_screen_frame(screen_frame, gaze_info)
@@ -331,44 +351,42 @@ class Tracker:
                     log_time = datetime.datetime.now()
                     progress = frame_id / frames_cnt
                     
-                    processed_time = datetime.timedelta(seconds=int(progress*camera_video.duration_sec))
+                    processed_time = datetime.timedelta(seconds=int(progress * (camera_video.duration_sec or 0.0)))
                     
                     one_sec = datetime.timedelta(seconds=1)
                     fps = int(frames_cnt / 10 / ((log_time - last_log_time) / one_sec + 0.001))
 
-                    logger.info(f"Progress: {frame_id} / {frames_cnt} frames | "
-                                f"{processed_time} / {total_time} | "
-                                f"{int(progress * 100)}% | "
-                                f"{fps} fps")
+                    process_logger.info(f"Progress: {frame_id} / {frames_cnt} frames | "
+                                        f"{processed_time} / {total_time} | "
+                                        f"{int(progress * 100)}% | "
+                                        f"{fps} fps")
                     last_log_time = log_time
-        except Exception as e:
-            logger.error("Failed to process frames.")
-            raise e
+        except Exception:
+            process_logger.exception("Failed to process frames.")
+            raise
         finally:
             camera_writer.release()
             screen_writer.release()
             
-        if suspicious_interval_duration > 1e-6 and suspicious_reasons:
-            interval_start = len(screen_video) / screen_video.fps - suspicious_interval_duration
-            time_str = str(timedelta(seconds=int(interval_start)))
-            intervals.append({
-                "time": time_str,
-                "duration": suspicious_interval_duration,
-                "description": ", ".join(sorted([r.name for r in suspicious_reasons]))
-            })
+        self._append_suspicious_interval(
+            intervals,
+            len(screen_video) / screen_video.fps - suspicious_interval_duration,
+            suspicious_interval_duration,
+            suspicious_reasons,
+        )
             
-        logger.info("Frames were processed sucessfully. Re-encoding output videos...")
+        process_logger.info("Frames were processed successfully. Re-encoding output videos...")
         try:
             self.convert_codec(input_path=camera_out_raw, output_path=camera_out)
             self.convert_codec(input_path=screen_out_raw, output_path=screen_out)
-        except Exception as e:
-            logger.info("Failed to re-encode output videos.")
-            raise e
+        except Exception:
+            process_logger.exception("Failed to re-encode output videos.")
+            raise
         finally:
             camera_out_raw.unlink(missing_ok=True)
             screen_out_raw.unlink(missing_ok=True)
         
-        logger.info("Output videos were re-encoded successfully. process_video is done.")
+        process_logger.info("Output videos were re-encoded successfully. process_video is done.")
         return intervals
 
     def process_job(self, payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -396,7 +414,7 @@ class Tracker:
                 "path_processed_screen": "results/uuid/screen.mp4"
             }
         """
-        logging.info(f"Received job with payload: {payload}")
+        logger.info(f"Received job with payload: {payload}")
         recording_id = str(payload["recording_id"])
 
         path_screen = payload.get("path_screen")
@@ -404,8 +422,8 @@ class Tracker:
         if not path_screen or not path_webcam:
             raise KeyError("payload must contain both 'path_screen' and 'path_webcam'")
 
-        screen_video_path = os.path.join("/data", path_screen)
-        webcam_video_path = os.path.join("/data", path_webcam)
+        screen_video_path = self._resolve_path(path_screen)
+        webcam_video_path = self._resolve_path(path_webcam)
 
         out_dir = (self._data_dir / "results" / recording_id).resolve()
         out_dir.relative_to(self._data_dir)

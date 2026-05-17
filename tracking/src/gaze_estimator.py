@@ -7,7 +7,14 @@ from src.resnet import resnet34
 from torchvision.transforms import transforms as T
 
 from typing import List, Tuple, Union
-from src.constants import *
+from src.constants import (
+    EYE_INDICES,
+    LEFT_EYE_INDICES,
+    MODELS,
+    PRECISIONS,
+    PTH2MODELS,
+    RIGHT_EYE_INDICES,
+)
 
 core = ov.Core()
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -206,8 +213,8 @@ class GazeEstimator:
         output = self._gaze_vector_estimation_model((preprocessed_left, preprocessed_right, angles))
         output = output[self._gaze_vector_estimation_model.output(0)].squeeze()
 
-        l = np.linalg.norm(output)
-        output /= l if l != 0 else 1
+        norm = np.linalg.norm(output)
+        output /= norm if norm != 0 else 1
         
         output *= np.array([1, -1, -1])
         
@@ -279,4 +286,3 @@ class GazeEstimator:
             eyes_bbox.append(bbox)
             
         return gaze_vecs, pupils, offsets, eyes_bbox
-        

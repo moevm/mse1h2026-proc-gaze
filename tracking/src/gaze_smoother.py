@@ -1,5 +1,6 @@
 import numpy as np
 from filterpy.kalman import KalmanFilter
+from typing import Optional
 
 class BaseGazeSmoother:
     def __init__(self):
@@ -11,12 +12,12 @@ class BaseGazeSmoother:
 class GazeSmoother(BaseGazeSmoother):
     def __init__(self, alpha: float = 0.5) -> None:
         self.alpha: float = alpha
-        self.prev_point: np.ndarray = None
+        self.prev_point: Optional[np.ndarray] = None
     
     def update(self, raw_point: np.ndarray) -> np.ndarray:
         if self.prev_point is None:
-            self.prev_pos = raw_point.copy()
-            return self.prev_pos
+            self.prev_point = raw_point.copy()
+            return self.prev_point
         
         smoothed_point = self.alpha * raw_point + (1 - self.alpha) * self.prev_point
         
