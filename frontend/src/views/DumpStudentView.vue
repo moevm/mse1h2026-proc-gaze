@@ -7,6 +7,12 @@
 
       <div class="upload-section">
         <h3 class="block-label">Загрузите CSV файл со студентами</h3>
+        <div class="csv-format-info">
+          <p class="format-label">Формат CSV файла:</p>
+          <pre class="csv-format-example">first_name,last_name,patronymic,group
+Иван,Иванов,Иванович,1111
+Кирилл,Пак,,3384</pre>
+        </div>
         <CsvUploadArea
             :fileName="csvFileName"
             @upload="handleUpload"
@@ -215,5 +221,32 @@ const goToMain = () => {
 
 .download-btn:hover {
   background-color: #218838;
+}
+
+.csv-format-info {
+  margin-bottom: 1.5rem;
+  padding: 0.75rem 1rem;
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 12px;
+  font-size: 0.95rem;
+}
+
+.format-label {
+  font-weight: 600;
+  margin: 0 0 0.5rem;
+  color: #495057;
+}
+
+.csv-format-example {
+  background-color: #ffffff;
+  padding: 0.5rem;
+  border: 1px solid #ced4da;
+  border-radius: 8px;
+  font-family: 'Courier New', monospace;
+  white-space: pre;
+  margin: 0;
+  font-size: 0.9rem;
+  color: #212529;
 }
 </style>

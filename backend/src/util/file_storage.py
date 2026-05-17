@@ -1,10 +1,8 @@
 import logging
 
 import aiofiles
-from fastapi import UploadFile
-from starlette import status
-from starlette.exceptions import HTTPException
-from starlette.responses import FileResponse
+from fastapi import UploadFile, status, HTTPException
+from fastapi.responses import FileResponse
 
 from src.util.config import UPLOAD_DIR
 

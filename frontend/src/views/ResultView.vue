@@ -45,16 +45,23 @@
             <div v-if="suspiciousList.length === 0" class="empty-suspicious">
               Нет подозрительных моментов
             </div>
-            <div v-else class="suspicious-list">
-              <SuspiciousItem
-                  v-for="item in suspiciousList"
-                  :key="item.sus_id"
-                  :time="item.time"
-                  :duration="item.duration"
-                  :description="item.description"
-                  @click="seekTo"
-              />
-            </div>
+            <template v-else>
+              <div class="suspicious-header">
+                <span class="header-time">Время</span>
+                <span class="header-duration">Длительность</span>
+                <span class="header-description">Описание</span>
+              </div>
+              <div class="suspicious-list">
+                <SuspiciousItem
+                    v-for="item in suspiciousList"
+                    :key="item.sus_id"
+                    :time="item.time"
+                    :duration="item.duration"
+                    :description="item.description"
+                    @click="seekTo"
+                />
+              </div>
+            </template>
           </div>
 
           <button class="download-button" @click="downloadResult">
@@ -403,5 +410,28 @@ const downloadResult = () => {
 
 .download-button:active {
   transform: scale(0.98);
+}
+
+.suspicious-header {
+  display: grid;
+  grid-template-columns: 100px 100px 1fr;
+  gap: 1rem;
+  padding: 0.5rem 1rem;
+  font-weight: 600;
+  color: #1a2b3c;
+  background-color: #f1f5f9;
+  border-radius: 8px 8px 0 0;
+  border: 1px solid #e2e8f0;
+  border-bottom: none;
+}
+
+.suspicious-header span {
+  font-family: inherit;
+}
+
+@media (max-width: 768px) {
+  .suspicious-header {
+    display: none;
+  }
 }
 </style>

@@ -3,11 +3,9 @@ import io
 import uuid
 from typing import List
 
-from fastapi import UploadFile
+from fastapi import UploadFile, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from starlette import status
-from starlette.exceptions import HTTPException
 
 from src.models import Student
 from src.schemas.student_schema import StudentRead, StudentCreate
@@ -15,8 +13,8 @@ from src.util.connection import connection
 
 
 @connection
-async def get_student(id: uuid.UUID, session: AsyncSession) -> StudentRead:
-    student = (await session.execute(select(Student).where(Student.student_id == id))).scalar_one_or_none()
+async def get_student(student_id: uuid.UUID, session: AsyncSession) -> StudentRead:
+    student = (await session.execute(select(Student).where(Student.student_id == student_id))).scalar_one_or_none()
     if not student:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student not found")
     return StudentRead.model_validate(student)
