@@ -26,11 +26,16 @@ class Tracker:
         self.gaze_estimator: GazeEstimator = GazeEstimator(precision_mode, threshold, use_torch_gaze)
         self.gaze_mapper: GazeMapper = GazeMapper()
         self.gaze_smoother: BaseGazeSmoother = AdaptiveGazeKalmanSmoother(measurement_var=0.1, process_var=100.0, saccade_factor=8.0)
-
-    @staticmethod
-    def draw_points(image: np.ndarray, points: List) -> np.ndarray:
+        self.projection_history: List[Tuple] = []
+    
+    
+    def draw_points(self, image: np.ndarray, points: List, adjust_point_size: bool=False) -> np.ndarray:
+        radius = 3
         for p in points:
-            cv2.circle(image, p, 2, (0, 0, 255), 2)
+            if adjust_point_size and len(self.projection_history) > 1:
+                try: radius = int(np.std(self.projection_history[:-5]))
+                except ValueError: radius = 3
+            cv2.circle(image, p, radius, (0, 0, 255), 2)
         return image
 
     def process_camera_frame(self, frame: np.ndarray, gaze_info: Tuple[np.ndarray], draw_bbox: bool = False) -> np.ndarray:
@@ -107,7 +112,8 @@ class Tracker:
             x, y = proj_p
             x = int(x)
             y = int(y)
-            res = self.draw_points(screen_frame, [(x, y)])
+            self.projection_history.append((x, y))
+            res = self.draw_points(screen_frame, [(x, y)], True)
             return res
         else:
             print("detected suspicious frame")
@@ -309,7 +315,7 @@ class Tracker:
                 else:
                     gaze_info = (gaze_vecs, pupils, offsets, eye_bboxes)
                     
-                    if suspicious_interval_duration > 1e-6 and suspicious_reasons:
+                    if suspicious_interval_duration > 1e-4 and suspicious_reasons:
                         interval_start = current_time - suspicious_interval_duration
                         time_str = str(timedelta(seconds=int(interval_start)))
                         
