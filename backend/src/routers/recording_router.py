@@ -62,26 +62,26 @@ async def handle_calibration(
     return calibration
 
 
-@router.get("/screen/{id}")
-async def get_screencast(id: uuid.UUID):
-    screencast = await recording_crud.get_screen(id)
+@router.get("/screen/{recording_id}")
+async def get_screencast(recording_id: uuid.UUID):
+    screencast = await recording_crud.get_screen(recording_id)
     return screencast
 
 
-@router.get("/webcam/{id}")
-async def get_webcam(id: uuid.UUID):
-    webcam = await recording_crud.get_webcam(id)
+@router.get("/webcam/{recording_id}")
+async def get_webcam(recording_id: uuid.UUID):
+    webcam = await recording_crud.get_webcam(recording_id)
     return webcam
 
 
-@router.get("/processed/webcam/{id}")
-async def get_processed_webcam(id: uuid.UUID):
-    return await recording_crud.get_processed_webcam(id)
+@router.get("/processed/webcam/{recording_id}")
+async def get_processed_webcam(recording_id: uuid.UUID):
+    return await recording_crud.get_processed_webcam(recording_id)
 
 
-@router.get("/processed/screen/{id}")
-async def get_processed_screen(id: uuid.UUID):
-    return await recording_crud.get_processed_screen(id)
+@router.get("/processed/screen/{recording_id}")
+async def get_processed_screen(recording_id: uuid.UUID):
+    return await recording_crud.get_processed_screen(recording_id)
 
 
 @router.get("", response_model=List[RecordingRead])
@@ -90,6 +90,6 @@ async def get_recordings():
     return recordings
 
 
-@router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_recording(id: uuid.UUID):
-    await recording_crud.delete_recording(id)
+@router.delete("/{recording_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_recording(recording_id: uuid.UUID):
+    await recording_crud.delete_recording(recording_id)
