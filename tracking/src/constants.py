@@ -20,7 +20,7 @@ LEFT_EYE_INDICES  = [8, 9, 10, 11, 12, 13, 14, 15]
 
 class IntervalDescription(str, Enum):
     NO_GAZE        = "На видео не найден взгляд"
-    MULTIPLE_GAZES = "Multiple gazes found on camera frame"
+    MULTIPLE_GAZES = "На видео найдено несколько взглядов"
     OFF_SCREEN     = "Projected point went off-screen"
 
 DEFAULT_FPS = 30.0
