@@ -18,6 +18,8 @@ EYE_INDICES = list(range(60, 76)) + [33]
 RIGHT_EYE_INDICES = [0, 1, 2, 3, 4, 5, 6, 7, 16]
 LEFT_EYE_INDICES  = [8, 9, 10, 11, 12, 13, 14, 15]
 
+MINIMAL_INTERVAL_DURATION = 5e-2
+
 class IntervalDescription(str, Enum):
     NO_GAZE        = "No gaze found on camera frame"
     MULTIPLE_GAZES = "Multiple gazes found on camera frame"

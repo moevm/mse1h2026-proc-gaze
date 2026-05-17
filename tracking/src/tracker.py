@@ -32,8 +32,8 @@ class Tracker:
     def draw_points(self, image: np.ndarray, points: List, adjust_point_size: bool=False) -> np.ndarray:
         radius = 3
         for p in points:
-            if adjust_point_size and len(self.projection_history) > 1:
-                try: radius = int(np.std(self.projection_history[:-5]))
+            if adjust_point_size and len(self.projection_history) > 2:
+                try: radius = int(np.std(self.projection_history[:-3]))
                 except ValueError: radius = 3
             cv2.circle(image, p, radius, (0, 0, 255), 2)
         return image
@@ -310,7 +310,7 @@ class Tracker:
                 else:
                     gaze_info = (gaze_vecs, pupils, offsets, eye_bboxes)
                     
-                    if suspicious_interval_duration > 1e-4 and suspicious_reasons:
+                    if suspicious_interval_duration > MINIMAL_INTERVAL_DURATION and suspicious_reasons:
                         interval_start = current_time - suspicious_interval_duration
                         time_str = str(timedelta(seconds=int(interval_start)))
                         
