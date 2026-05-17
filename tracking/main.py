@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+from concurrent.futures import Future
 from typing import Any
 import torch
 import numpy as np
@@ -21,6 +22,7 @@ logger = logging.getLogger(__name__)
 AMQP_URL = os.environ["AMQP_URL"]
 JOBS_Q = os.environ.get("AMQP_QUEUE", "tracking.jobs")
 RESULTS_Q = os.environ.get("AMQP_RESULT_QUEUE", "tracking.results")
+PROGRESS_Q = os.environ.get("AMQP_PROGRESS_QUEUE", "tracking.progress")
 
 CALIBRATION_JOBS_Q = os.environ.get("AMQP_CALIBRATION_QUEUE", "tracking.calibration.jobs")
 CALIBRATION_RESULTS_Q = os.environ.get("AMQP_CALIBRATION_RESULT_QUEUE", "tracking.calibration.results")
@@ -31,6 +33,7 @@ app = FastStream(broker)
 
 jobs_queue = RabbitQueue(JOBS_Q, durable=True)
 results_queue = RabbitQueue(RESULTS_Q, durable=True)
+progress_queue = RabbitQueue(PROGRESS_Q, durable=True)
 calibration_jobs_queue = RabbitQueue(CALIBRATION_JOBS_Q, durable=True)
 calibration_results_queue = RabbitQueue(CALIBRATION_RESULTS_Q, durable=True)
 
@@ -51,11 +54,31 @@ async def on_startup():
 
 @broker.subscriber(jobs_queue)
 async def handle_job(message: dict[str, Any]):
+    progress_publish_futures: list[Future] = []
+    loop = asyncio.get_running_loop()
+
+    def publish_progress(progress_payload: dict[str, Any]) -> None:
+        logger.info(
+            "Tracking progress for recording %s: %s%% (%s)",
+            progress_payload.get("recording_id"),
+            progress_payload.get("progress"),
+            progress_payload.get("stage"),
+        )
+        future = asyncio.run_coroutine_threadsafe(
+            broker.publish(progress_payload, queue=progress_queue),
+            loop,
+        )
+        progress_publish_futures.append(future)
+
     try:
         if tracker is None or tracker_lock is None:
             raise RuntimeError("Tracker is not initialized")
         async with tracker_lock:
-            result = await asyncio.to_thread(tracker.process_job, message)
+            result = await asyncio.to_thread(
+                tracker.process_job,
+                message,
+                progress_callback=publish_progress,
+            )
     except Exception as error:
         recording_id = message.get("recording_id") if isinstance(message, dict) else None
         logger.exception("Error processing recording %s", recording_id)
@@ -63,6 +86,12 @@ async def handle_job(message: dict[str, Any]):
             "recording_id": str(recording_id) if recording_id else None,
             "intervals": [],
         }
+
+    for future in progress_publish_futures:
+        try:
+            await asyncio.wrap_future(future)
+        except Exception:
+            logger.exception("Error publishing tracking progress")
 
     await broker.publish(result, queue=results_queue)
 

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import ANY, AsyncMock, Mock, patch
 
 import pytest
 
@@ -57,7 +57,10 @@ async def test_handle_job_publishes_processed_result():
 
     await main.handle_job({"recording_id": "rec-1"})
 
-    main.tracker.process_job.assert_called_once_with({"recording_id": "rec-1"})
+    main.tracker.process_job.assert_called_once_with(
+        {"recording_id": "rec-1"},
+        progress_callback=ANY,
+    )
     main.broker.publish.assert_awaited_once()
     published = main.broker.publish.await_args[0][0]
     assert published == expected_result
@@ -118,6 +121,36 @@ async def test_handle_job_publishes_to_results_queue():
 
     call_kwargs = main.broker.publish.await_args[1]
     assert call_kwargs["queue"] is main.results_queue
+
+
+@pytest.mark.asyncio
+async def test_handle_job_publishes_progress_to_progress_queue():
+    """Промежуточный прогресс должен публиковаться отдельно от финального результата."""
+
+    await main.on_startup()
+
+    def process_job(payload, progress_callback=None):
+        progress_callback({
+            "recording_id": payload["recording_id"],
+            "progress": 50,
+            "stage": "processing",
+        })
+        return {"recording_id": payload["recording_id"], "intervals": []}
+
+    main.tracker.process_job = Mock(side_effect=process_job)
+
+    await main.handle_job({"recording_id": "q-progress"})
+
+    assert main.broker.publish.await_count == 2
+    progress_call, result_call = main.broker.publish.await_args_list
+    assert progress_call.args[0] == {
+        "recording_id": "q-progress",
+        "progress": 50,
+        "stage": "processing",
+    }
+    assert progress_call.kwargs["queue"] is main.progress_queue
+    assert result_call.args[0] == {"recording_id": "q-progress", "intervals": []}
+    assert result_call.kwargs["queue"] is main.results_queue
 
 
 @pytest.mark.asyncio

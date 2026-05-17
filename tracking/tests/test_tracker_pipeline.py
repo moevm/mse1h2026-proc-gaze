@@ -137,6 +137,32 @@ def test_process_video_with_different_frame_counts(tracker, tmp_path):
     assert (out_dir / "screen.mp4").exists()
 
 
+def test_process_video_reports_progress(tracker, tmp_path):
+    """Обработка видео должна отдавать промежуточный прогресс через callback."""
+
+    out_dir = tmp_path / "results" / "rec-progress-video"
+    screen_path = str(tmp_path / "screen.mp4")
+    camera_path = str(tmp_path / "camera.mp4")
+    write_test_video(screen_path, n_frames=3, width=10, height=10, fps=30.0)
+    write_test_video(camera_path, n_frames=3, width=10, height=10, fps=30.0)
+
+    screen_video = Video(screen_path)
+    camera_video = Video(camera_path)
+    updates = []
+
+    try:
+        tracker.process_video(screen_video, camera_video, out_dir, progress_callback=updates.append)
+    finally:
+        screen_video.close()
+        camera_video.close()
+
+    assert updates[0]["progress"] == 0
+    assert updates[0]["stage"] == "processing"
+    assert updates[-1]["progress"] == 100
+    assert updates[-1]["stage"] == "done"
+    assert any(update["stage"] == "encoding" for update in updates)
+
+
 def test_process_job_builds_result(tracker, tmp_path):
     """Успешная обработка задания должна вернуть результат с нужными полями."""
 
@@ -184,6 +210,33 @@ def test_process_job_creates_output_files(tracker, tmp_path):
         Path("/data/test_job_files/screen.mp4").unlink(missing_ok=True)
         Path("/data/test_job_files/webcam.mp4").unlink(missing_ok=True)
         Path("/data/test_job_files").rmdir()
+
+
+def test_process_job_reports_progress_with_recording_id(tracker, tmp_path):
+    """process_job должен добавлять recording_id в progress-сообщения."""
+
+    os.makedirs("/data/test_job_progress", exist_ok=True)
+    write_test_video("/data/test_job_progress/screen.mp4", n_frames=3, width=10, height=10)
+    write_test_video("/data/test_job_progress/webcam.mp4", n_frames=3, width=10, height=10)
+    updates = []
+
+    try:
+        tracker.process_job(
+            {
+                "recording_id": "rec-progress",
+                "path_screen": "test_job_progress/screen.mp4",
+                "path_webcam": "test_job_progress/webcam.mp4",
+            },
+            progress_callback=updates.append,
+        )
+
+        assert updates
+        assert all(update["recording_id"] == "rec-progress" for update in updates)
+        assert updates[-1]["progress"] == 100
+    finally:
+        Path("/data/test_job_progress/screen.mp4").unlink(missing_ok=True)
+        Path("/data/test_job_progress/webcam.mp4").unlink(missing_ok=True)
+        Path("/data/test_job_progress").rmdir()
 
 
 def test_process_job_raises_key_error_when_paths_are_missing(tracker):
