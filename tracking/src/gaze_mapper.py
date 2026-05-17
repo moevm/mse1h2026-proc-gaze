@@ -18,22 +18,33 @@ class GazeMapper(nn.Module):
         self.rotation_mat = torch.tensor([[-1,  0, 0 ],
                                           [ 0, -1, 0 ],
                                           [ 0,  0, 1 ]], device=device, dtype=torch.float32, requires_grad=False)
-        self.translation_vec = nn.Parameter(torch.tensor([1500.0, 1000.0, 4000.0], device=device, dtype=torch.float32), requires_grad=True)
+        self.translation_vec = nn.Parameter(torch.tensor([1000, 1000, 1000], device=device, dtype=torch.float32), requires_grad=True)
+        
+    def project(self, gaze_tensor: torch.Tensor) -> torch.Tensor:
+        if isinstance(gaze_tensor, np.ndarray):
+            gaze_tensor = torch.as_tensor(gaze_tensor, dtype=torch.float32, device=device)
+        if gaze_tensor.dim() == 1:
+            gaze_tensor = gaze_tensor.unsqueeze(0)
 
-    def __calc_lambda(self, gaze_tensor: np.ndarray|torch.Tensor) -> np.float32:
+        gaze_tensor = gaze_tensor.to(device, dtype=torch.float32)
+
         z_s = torch.tensor([0, 0, 1], device=device, dtype=torch.float32)
-        z_g = self.rotation_mat @ z_s
-            
-        t_g = -self.rotation_mat @ self.translation_vec
-        l = (z_g @ t_g) / (z_g @ gaze_tensor)
-        
-        return l
-        
-    def project(self, gaze_vec: np.ndarray) -> np.ndarray:
-        gaze_tensor = torch.as_tensor(gaze_vec, dtype=torch.float32, device=device).squeeze()
-        l = self.__calc_lambda(gaze_tensor)
 
-        return self.rotation_mat @ (l * gaze_tensor) + self.translation_vec
+        numerator = torch.dot(z_s, self.translation_vec)
+
+        rotated = gaze_tensor @ self.rotation_mat.T
+
+        denom = rotated @ z_s
+
+        eps = 1e-6
+        denom = torch.where(torch.abs(denom) < eps, torch.full_like(denom, eps), denom)
+
+        lambda_ = numerator / denom
+
+        points = self.rotation_mat @ (lambda_.unsqueeze(1) * gaze_tensor).T
+        points = points.T + self.translation_vec
+
+        return points[:, :2]
     
 class GazeDataset(Dataset):
     def __init__(self, data: List[Tuple[np.ndarray, np.ndarray]]):
@@ -53,45 +64,60 @@ def compute_rmse(model: GazeMapper, loader: DataLoader) -> float:
     
     for vec, point in loader:
         vec = vec.to(device)
-        point = point.to(device)
+        point = point.to(device)[:, :2]
         output = model.project(vec)
         total_sq_error += torch.sum((point - output) ** 2).item()
-        n_samples += point.size(0)
+        n_samples += point.shape[0]
         
     return (total_sq_error / n_samples) ** 0.5
         
-def calibrate(n_epochs: int, model: GazeMapper, train_loader: DataLoader, val_loader: DataLoader, verbose: bool=True) -> GazeMapper:
+def calibrate(
+    n_epochs: int,
+    model: GazeMapper,
+    train_loader: DataLoader,
+    val_loader: DataLoader,
+    verbose: bool = True
+) -> GazeMapper:
+
     model = model.to(device).train()
 
-    optimizer = Minimizer(model.parameters(), method="bfgs", max_iter=n_epochs, tol=1e-9, disp=2 if verbose else 0)
-    
+    optimizer = Minimizer(
+        model.parameters(),
+        method="bfgs",
+        max_iter=n_epochs,
+        tol=1e-9,
+        disp=2 if verbose else 0
+    )
+
+    all_vecs, all_points = [], []
+    for v, p in train_loader:
+        all_vecs.append(v)
+        all_points.append(p[:, :2])
+        
+    batch_vecs = torch.cat(all_vecs).to(device).float()
+    batch_points = torch.cat(all_points).to(device).float()
+
     def closure() -> torch.Tensor:
         optimizer.zero_grad()
-        total_sq_error = torch.tensor(0.0, device=device)
-        n_samples = 0
+
+        pred = model.project(batch_vecs)
+
+        loss_xy = nn.functional.smooth_l1_loss(pred, batch_points, reduction="mean")
         
-        for vec, point in train_loader:
-            vec = vec.to(device)
-            point = point.to(device)
-            output = model.project(vec)
-            
-            total_sq_error += torch.sum((point - output) ** 2)
-            n_samples += point.size(0)
-        l2_reg = torch.sum(torch.stack([p.pow(2).sum() for p in model.parameters()]))
-        mse = total_sq_error / n_samples
-        return mse + 1e-3 * l2_reg
-    
-    final_mse = optimizer.step(closure)
-    
+        loss = loss_xy + 2e-3 * torch.sum(model.translation_vec.abs()) 
+        return loss
+
+    final_loss = optimizer.step(closure)
+
     model.eval()
     with torch.no_grad():
         train_rmse = compute_rmse(model, train_loader)
         val_rmse = compute_rmse(model, val_loader)
-        
+
     if verbose:
-        print(f"Optimization finished. Final MSE: {final_mse.item():.6f}")
+        print(f"Optimization finished. Final loss: {final_loss.item():.6f}")
         print(f"Train RMSE: {train_rmse:.6f} | Val RMSE: {val_rmse:.6f}")
-        
+
     return model
 
 def calibrate_stochastic(n_epochs: int, model: GazeMapper, train_loader: DataLoader, val_loader: DataLoader, verbose: bool=True) -> GazeMapper:
@@ -104,8 +130,8 @@ def calibrate_stochastic(n_epochs: int, model: GazeMapper, train_loader: DataLoa
         model.train()
         train_total = 0.0
         for i, (gaze, point) in enumerate(train_bar, 1):
-            gaze = gaze.float().to(device)
-            point = point.float().to(device).squeeze() 
+            gaze = torch.as_tensor(gaze, dtype=torch.float32, device=device)
+            point = torch.as_tensor(point, dtype=torch.float32, device=device)
             
             proj_point = model.project(gaze)
             
@@ -122,8 +148,8 @@ def calibrate_stochastic(n_epochs: int, model: GazeMapper, train_loader: DataLoa
         with torch.no_grad():
             val_total = 0.0
             for i, (gaze, point) in enumerate(val_bar, 1):
-                gaze = gaze.float().to(device)
-                point = point.float().to(device).squeeze() 
+                gaze = torch.as_tensor(gaze, dtype=torch.float32, device=device)
+                point = torch.as_tensor(point, dtype=torch.float32, device=device)
                 
                 proj_point = model.project(gaze)
                 loss = torch.sum((point - proj_point) ** 2)

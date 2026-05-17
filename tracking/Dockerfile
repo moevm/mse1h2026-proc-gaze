@@ -4,9 +4,10 @@ WORKDIR /app
 
 RUN pip install --no-cache-dir "torch==2.10.0"
 
+# version for libglib needs to be updated
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ffmpeg=7:7.1.3-0+deb13u1 \
-    libglib2.0-0t64=2.84.4-3~deb13u2 \
+    ffmpeg=7:7.1.4-0+deb13u1 \
+    libglib2.0-0t64=2.84.4-3~deb13u3 \
     libsm6=2:1.2.6-1 \
     libxext6=2:1.3.4-1+b3 \
     libxrender1=1:0.9.12-1 \

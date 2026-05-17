@@ -17,9 +17,9 @@ def test_project_returns_3d_tensor(mapper):
 
     gaze_vec = np.array([0.1, 0.2, 0.9])
 
-    result = mapper.project(gaze_vec)
+    result = mapper.project(gaze_vec).squeeze()
 
-    assert result.shape == (3,)
+    assert result.shape == (2,)
 
 
 def test_project_returns_finite_values(mapper):

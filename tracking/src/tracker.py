@@ -1,7 +1,7 @@
 from src.constants import *
-from src.gaze_smoother import AdaptiveGazeKalmanSmoother, BaseGazeSmoother
+from src.gaze_smoother import GazeSmoother, BaseGazeSmoother, AdaptiveGazeKalmanSmoother
 from src.gaze_estimator import GazeEstimator
-from src.gaze_mapper import GazeDataset, GazeMapper, calibrate
+from src.gaze_mapper import GazeDataset, GazeMapper, calibrate, calibrate_stochastic
 
 import os
 from datetime import timedelta
@@ -26,11 +26,16 @@ class Tracker:
         self.gaze_estimator: GazeEstimator = GazeEstimator(precision_mode, threshold, use_torch_gaze)
         self.gaze_mapper: GazeMapper = GazeMapper()
         self.gaze_smoother: BaseGazeSmoother = AdaptiveGazeKalmanSmoother(measurement_var=0.1, process_var=100.0, saccade_factor=8.0)
-
-    @staticmethod
-    def draw_points(image: np.ndarray, points: List) -> np.ndarray:
+        self.projection_history: List[Tuple] = []
+    
+    
+    def draw_points(self, image: np.ndarray, points: List, adjust_point_size: bool=False) -> np.ndarray:
+        radius = 3
         for p in points:
-            cv2.circle(image, p, 2, (0, 0, 255), 2)
+            if adjust_point_size and len(self.projection_history) > 2:
+                try: radius = int(np.std(self.projection_history[:-3]))
+                except ValueError: radius = 3
+            cv2.circle(image, p, radius, (0, 0, 255), 2)
         return image
 
     def process_camera_frame(self, frame: np.ndarray, gaze_info: Tuple[np.ndarray], draw_bbox: bool = False) -> np.ndarray:
@@ -100,14 +105,15 @@ class Tracker:
         if len(gaze_vecs) == 0:
             return screen_frame
     
-        main_vec = gaze_vecs[0]
-        proj_p = self.gaze_mapper.project(main_vec).cpu().numpy()[:2]
+        main_vec = torch.as_tensor(gaze_vecs[0], dtype=torch.float32, device=device)
+        proj_p = self.gaze_mapper.project(main_vec).cpu().numpy().squeeze()
         
         if not all(np.isnan(proj_p)):
             x, y = proj_p
             x = int(x)
             y = int(y)
-            res = self.draw_points(screen_frame, [(x, y)])
+            self.projection_history.append((x, y))
+            res = self.draw_points(screen_frame, [(x, y)], True)
             return res
         else:
             print("detected suspicious frame")
@@ -167,8 +173,8 @@ class Tracker:
                 if len(gaze_vecs) == 0:
                     raise ValueError("Gaze estimation failed. Frame does not contain detectable gaze vectors.")
 
-                point = np.array([int(click["x"]), int(click["y"]), 0.0], dtype=np.float32)
-                data.append((gaze_vecs[0], point))
+                point = np.array([int(click["x"]), int(click["y"])], dtype=np.float32)
+                data.append((gaze_vecs[0], point[:2]))
         finally:
             webcam_video.close()
             decoded_webcam_path.unlink(missing_ok=True)
@@ -178,20 +184,12 @@ class Tracker:
 
         mapper = GazeMapper()
         dataset = GazeDataset(data)
-        if len(dataset) == 1:
-            train = val = dataset
-        else:
-            generator = torch.Generator().manual_seed(0)
-            val_size = max(1, round(len(dataset) * 0.1))
-            train_size = len(dataset) - val_size
-            train, val = random_split(dataset, [train_size, val_size], generator)
 
-        train_loader = DataLoader(train, batch_size=1, shuffle=True, num_workers=0)
-        val_loader = DataLoader(val, batch_size=1, shuffle=True, num_workers=0)
+        train_loader = DataLoader(dataset, batch_size=1, shuffle=True, num_workers=0)
 
-        mapper = calibrate(15, mapper, train_loader, val_loader, verbose=False)
+        mapper = calibrate(150, mapper, train_loader, train_loader, verbose=True)
         result = [float(v) for v in mapper.translation_vec.detach().cpu().tolist()]
-
+        logging.info(result)        
         return {
             "student_id": student_id,
             "result": result,
@@ -302,14 +300,17 @@ class Tracker:
                     suspicious_interval_duration += frame_duration
                     suspicious_reasons.add(IntervalDescription.MULTIPLE_GAZES)
                     
-                elif any(np.isnan(self.gaze_mapper.project(gaze_vecs[0]).cpu().numpy())):
+                elif any(np.isnan(projection := self.gaze_mapper.project(torch.as_tensor(gaze_vecs[0], dtype=torch.float32, device=device)).cpu().numpy().squeeze())) \
+                    or abs(projection[0]) > screen_video.width \
+                    or abs(projection[1]) > screen_video.height \
+                    or projection[0] < 0 or projection[1] < 0:
                     suspicious_interval_duration += frame_duration
                     suspicious_reasons.add(IntervalDescription.OFF_SCREEN)
                     
                 else:
                     gaze_info = (gaze_vecs, pupils, offsets, eye_bboxes)
                     
-                    if suspicious_interval_duration > 1e-6 and suspicious_reasons:
+                    if suspicious_interval_duration > MINIMAL_INTERVAL_DURATION and suspicious_reasons:
                         interval_start = current_time - suspicious_interval_duration
                         time_str = str(timedelta(seconds=int(interval_start)))
                         
@@ -354,7 +355,7 @@ class Tracker:
             intervals.append({
                 "time": time_str,
                 "duration": suspicious_interval_duration,
-                "description": ", ".join(sorted([r.name for r in suspicious_reasons]))
+                "description": ", ".join(sorted([r for r in suspicious_reasons]))
             })
             
         logger.info("Frames were processed sucessfully. Re-encoding output videos...")
