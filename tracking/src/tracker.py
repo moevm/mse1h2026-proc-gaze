@@ -9,7 +9,7 @@ import ffmpeg
 import logging
 import datetime
 from pathlib import Path
-from typing import Optional, List, Any, Dict, Tuple
+from typing import Optional, List, Any, Dict, Tuple, Callable
 import numpy as np
 import cv2
 import torch
@@ -134,6 +134,14 @@ class Tracker:
     def _to_relative_path(self, path: Path) -> str:
         return path.resolve().relative_to(self._data_dir).as_posix()
 
+    @staticmethod
+    def _emit_progress(
+            progress_callback: Optional[Callable[[Dict[str, Any]], None]],
+            **payload: Any
+    ) -> None:
+        if progress_callback is not None:
+            progress_callback(payload)
+
     def _apply_calibration_result(self, result: List[float]) -> torch.Tensor:
         if len(result) != 3:
             raise ValueError(f"Calibration result must contain exactly 3 values, got {len(result)}")
@@ -228,7 +236,8 @@ class Tracker:
             self,
             screen_video: Video,
             camera_video: Video,
-            out_dir: Optional[Path] = None
+            out_dir: Optional[Path] = None,
+            progress_callback: Optional[Callable[[Dict[str, Any]], None]] = None,
         ) -> List[Dict[str, Any]]:
         """
         Обрабатывает пару видео (экран + вебкамера) и сохраняет результаты в out_dir.
@@ -237,6 +246,7 @@ class Tracker:
             screen_video: объект Video для записи экрана.
             camera_video: объект Video для потока с вебкамеры.
             out_dir: директория для сохранения результатов.
+            progress_callback: вызывается с промежуточным прогрессом обработки.
 
         Сохраняет:
             - camera.mp4: обработанное видео с вебкамеры (bbox глаз, вектор взгляда).
@@ -288,6 +298,17 @@ class Tracker:
             last_log_time = datetime.datetime.now()
 
             frames_cnt = min(len(camera_video), len(screen_video))
+            total_seconds = float(camera_video.duration_sec or 0.0)
+            self._emit_progress(
+                progress_callback,
+                progress=0,
+                stage="processing",
+                processed_frames=0,
+                total_frames=frames_cnt,
+                processed_seconds=0.0,
+                total_seconds=total_seconds,
+            )
+            last_reported_progress = 0
             for frame_id, (camera_frame, screen_frame) in enumerate(zip(camera_video, screen_video)):
                 gaze_vecs, pupils, offsets, eye_bboxes = self.gaze_estimator.estimate(camera_frame)
                 gaze_info = None
@@ -341,6 +362,20 @@ class Tracker:
                                 f"{int(progress * 100)}% | "
                                 f"{fps} fps")
                     last_log_time = log_time
+
+                processed_frames = frame_id + 1
+                progress_percent = min(95, int(processed_frames / frames_cnt * 95))
+                if progress_percent > last_reported_progress:
+                    self._emit_progress(
+                        progress_callback,
+                        progress=progress_percent,
+                        stage="processing",
+                        processed_frames=processed_frames,
+                        total_frames=frames_cnt,
+                        processed_seconds=processed_frames / screen_video.fps,
+                        total_seconds=total_seconds,
+                    )
+                    last_reported_progress = progress_percent
         except Exception as e:
             logger.error("Failed to process frames.")
             raise e
@@ -358,6 +393,15 @@ class Tracker:
             })
             
         logger.info("Frames were processed sucessfully. Re-encoding output videos...")
+        self._emit_progress(
+            progress_callback,
+            progress=99,
+            stage="encoding",
+            processed_frames=frames_cnt,
+            total_frames=frames_cnt,
+            processed_seconds=total_seconds,
+            total_seconds=total_seconds,
+        )
         try:
             self.convert_codec(input_path=camera_out_raw, output_path=camera_out)
             self.convert_codec(input_path=screen_out_raw, output_path=screen_out)
@@ -369,9 +413,22 @@ class Tracker:
             screen_out_raw.unlink(missing_ok=True)
         
         logger.info("Output videos were re-encoded successfully. process_video is done.")
+        self._emit_progress(
+            progress_callback,
+            progress=100,
+            stage="done",
+            processed_frames=frames_cnt,
+            total_frames=frames_cnt,
+            processed_seconds=total_seconds,
+            total_seconds=total_seconds,
+        )
         return intervals
 
-    def process_job(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def process_job(
+            self,
+            payload: Dict[str, Any],
+            progress_callback: Optional[Callable[[Dict[str, Any]], None]] = None,
+    ) -> Dict[str, Any]:
         """
         Обрабатывает задание на трекинг из payload.
 
@@ -398,6 +455,13 @@ class Tracker:
         """
         logging.info(f"Received job with payload: {payload}")
         recording_id = str(payload["recording_id"])
+
+        def job_progress_callback(progress_payload: Dict[str, Any]) -> None:
+            self._emit_progress(
+                progress_callback,
+                recording_id=recording_id,
+                **progress_payload,
+            )
 
         path_screen = payload.get("path_screen")
         path_webcam = payload.get("path_webcam")
@@ -427,7 +491,12 @@ class Tracker:
 
         try:
             with torch.no_grad():
-                intervals: List[Dict[str, Any]] = self.process_video(screen_video, webcam_video, out_dir)
+                intervals: List[Dict[str, Any]] = self.process_video(
+                    screen_video,
+                    webcam_video,
+                    out_dir,
+                    progress_callback=job_progress_callback,
+                )
         finally:
             if previous_translation is not None:
                 with torch.no_grad():
